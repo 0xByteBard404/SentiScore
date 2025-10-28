@@ -1,4 +1,3 @@
-# 多阶段构建：构建阶段
 FROM python:3.11-slim as builder
 
 WORKDIR /app
@@ -11,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 # 复制依赖文件
 COPY requirements.txt .
 
-# 安装Python依赖到本地目录
+# 安装Python依赖到用户目录
 RUN pip install --user -r requirements.txt
 
 # 多阶段构建：运行阶段
@@ -40,7 +39,11 @@ COPY app.py config.py ./
 COPY src/ src/
 
 # 创建缓存目录
-RUN mkdir -p .cemotion_cache
+RUN mkdir -p /app/.cemotion_cache /app/.cache/modelscope
+
+# 设置环境变量指向持久化缓存目录
+ENV MODEL_CACHE_DIR=/app/.cemotion_cache
+ENV MODELSCOPE_CACHE_DIR=/app/.cache/modelscope
 
 # 创建非root用户
 RUN adduser --disabled-password --gecos '' appuser

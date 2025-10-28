@@ -8,12 +8,15 @@ services:
     volumes:
       # 持久化模型缓存，避免重复下载
       - ./cemotion_cache:/app/.cemotion_cache
+      - ./modelscope_cache:/app/.cache/modelscope
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=false
       - MODEL_CACHE_DIR=/app/.cemotion_cache
+      - MODELSCOPE_CACHE_DIR=/app/.cache/modelscope
       # 多源下载配置 - 使用国内外镜像
       - MODEL_DOWNLOAD_STRATEGY=cn_priority
       - HF_ENDPOINT=https://hf-mirror.com
       - HF_MIRROR=https://hf-mirror.com
     restart: unless-stopped
+    user: "1000:1000"  # 使用非root用户运行

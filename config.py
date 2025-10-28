@@ -9,13 +9,17 @@ from typing import List
 # 立即设置Hugging Face环境变量，必须在任何transformers导入之前
 HF_MIRROR_DEFAULT = 'https://hf-mirror.com'
 HF_ENDPOINT_VALUE = os.getenv('HF_ENDPOINT', HF_MIRROR_DEFAULT)
-HF_CACHE_DIR_DEFAULT = os.path.join(os.path.expanduser("~"), '.cache', 'huggingface')
+HF_CACHE_DIR_DEFAULT = os.getenv('HF_HOME', os.path.join(os.path.expanduser("~"), '.cache', 'huggingface'))
 
 # 全局设置Hugging Face Hub配置
 os.environ.setdefault('HF_ENDPOINT', HF_ENDPOINT_VALUE)
 os.environ.setdefault('HF_HOME', HF_CACHE_DIR_DEFAULT)
 os.environ.setdefault('HF_HUB_DISABLE_PROGRESS_BARS', 'true')
 os.environ.setdefault('HF_HUB_ETAG_TIMEOUT', '10')
+
+# 设置ModelScope缓存目录
+MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', os.path.join(os.path.expanduser("~"), '.cache', 'modelscope'))
+os.environ.setdefault('MODELSCOPE_CACHE_HOME', MODELSCOPE_CACHE_DIR)
 
 class Config:
     """应用配置类"""
@@ -51,6 +55,9 @@ class Config:
     HF_ENDPOINT = os.getenv('HF_ENDPOINT', 'https://huggingface.co')
     # 使用国内镜像加速Hugging Face下载
     HF_MIRROR = os.getenv('HF_MIRROR', 'https://hf-mirror.com')  # 或使用 'https://huggingface.co' (官方)
+
+    # ModelScope配置
+    MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', os.path.join(os.path.expanduser("~"), '.cache', 'modelscope'))
 
     # API配置
     MAX_TEXT_LENGTH = int(os.getenv('MAX_TEXT_LENGTH', '512'))
@@ -94,6 +101,10 @@ def validate_config():
     # 创建缓存目录
     if not os.path.exists(config.MODEL_CACHE_DIR):
         os.makedirs(config.MODEL_CACHE_DIR)
+    
+    # 创建ModelScope缓存目录
+    if not os.path.exists(config.MODELSCOPE_CACHE_DIR):
+        os.makedirs(config.MODELSCOPE_CACHE_DIR)
 
 # 运行配置验证
 validate_config()
