@@ -1,3 +1,9 @@
 cemotion>=2.0.0
 flask>=3.0.0
 psutil>=5.9.0
+addict>=2.4.0
+modelscope>=1.28.2
+datasets==3.6.0
+Pillow>=10.0.0
+simplejson>=3.19.0
+sortedcontainers>=2.4.0
