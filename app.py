@@ -9,12 +9,19 @@ import gc
 import threading
 from flask import Flask
 
+# 在导入任何其他模块之前设置环境变量
+# 设置ModelScope环境变量（提前设置，确保在cemotion导入前生效）
+MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', '/app/.cache/modelscope')
+os.environ['MODELSCOPE_CACHE_HOME'] = MODELSCOPE_CACHE_DIR
+os.environ['MODELSCOPE_CACHE_DIR'] = MODELSCOPE_CACHE_DIR
+
 # 本地配置导入
 from config import config
 
 # 工具函数
 from src.utils.helpers import setup_logging, EmotionAnalysisError
 from src.core.cemotion import Cemotion
+from src.core.segmentor import TextSegmentor
 from src.api.routes import register_routes
 
 # 配置日志
@@ -42,16 +49,11 @@ if not os.path.exists(config.HF_CACHE_DIR):
 
 # 验证配置完整性
 logger.info("配置验证完成")
+logger.info(f"ModelScope缓存目录: {MODELSCOPE_CACHE_DIR}")
 
 app = Flask(__name__)
-
 # 配置JSON编码器，确保中文字符不会被转义
-from flask.json.provider import DefaultJSONProvider
-
-class CustomJSONProvider(DefaultJSONProvider):
-    ensure_ascii = False
-
-app.json = CustomJSONProvider(app)
+app.config['JSON_AS_ASCII'] = False
 
 # 初始化情感分析器
 try:
@@ -72,6 +74,14 @@ try:
         
 except Exception as e:
     logger.error(f"情感分析器初始化失败: {e}")
+    raise
+
+# 初始化分词器
+try:
+    segmentor = TextSegmentor(config)
+    logger.info("文本分词器初始化成功")
+except Exception as e:
+    logger.error(f"文本分词器初始化失败: {e}")
     raise
 
 # 注册路由

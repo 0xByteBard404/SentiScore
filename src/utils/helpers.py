@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 import torch
 import warnings
 from transformers import logging as transformers_logging
+import json
 
 from config import config
 
@@ -223,19 +224,21 @@ def get_client_ip(request):
 
 def create_error_response(error_code: str, message: str, status_code: int = 400, details: Optional[str] = None):
     """创建统一的错误响应"""
-    from flask import request
+    from flask import request, Response
     error_obj = APIError(code=error_code, message=message, details=details)
     client_ip = get_client_ip(request)
     logging.getLogger('cemotion_api').warning(f"[{client_ip}] API错误 - {error_code}: {message}")
-    from flask import jsonify
-    return jsonify(asdict(error_obj)), status_code
+    # 使用json.dumps确保中文不会被转义
+    response_data = json.dumps(asdict(error_obj), ensure_ascii=False)
+    return Response(response_data, status=status_code, content_type='application/json; charset=utf-8')
 
 
 def create_success_response(data: Any, client_ip: Optional[str] = None):
     """创建成功的响应"""
-    from flask import request
+    from flask import request, Response
     if client_ip is None:
         client_ip = get_client_ip(request)
     logging.getLogger('cemotion_api').info(f"[{client_ip}] 请求成功")
-    from flask import jsonify
-    return jsonify({"data": data, "timestamp": int(time.time())})
+    # 使用json.dumps确保中文不会被转义
+    response_data = json.dumps({"data": data, "timestamp": int(time.time())}, ensure_ascii=False)
+    return Response(response_data, status=200, content_type='application/json; charset=utf-8')

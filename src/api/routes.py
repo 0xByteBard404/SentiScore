@@ -218,9 +218,9 @@ def register_routes(app, analyzer, config):
             text = data.get('text', '').strip()
             
             # 输入验证
-            segmentor = TextSegmentor()
+            segmentor = TextSegmentor(config)
             is_valid, error = segmentor.validate_input(text)
-            if not is_valid:
+            if not is_valid and error is not None:
                 return create_error_response(error.code, error.message, 400, error.details)
             
             # 执行文本分词
@@ -263,13 +263,13 @@ def register_routes(app, analyzer, config):
                 if not isinstance(text, str):
                     return create_error_response("INVALID_TEXT_TYPE", f"第{i}个文本不是字符串类型", 400)
                     
-                is_valid, error = TextSegmentor().validate_input(text)
-                if not is_valid:
+                is_valid, error = TextSegmentor(config).validate_input(text)
+                if not is_valid and error is not None:
                     return create_error_response(error.code, f"第{i}个文本验证失败: {error.message}", 400, error.details)
             
             # 执行批量分词
             try:
-                segmentor = TextSegmentor()
+                segmentor = TextSegmentor(config)
                 results = segmentor.segment_batch(texts)
                 formatted_results = []
                 for text, tokens in zip(texts, results):

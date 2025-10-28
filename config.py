@@ -17,9 +17,11 @@ os.environ.setdefault('HF_HOME', HF_CACHE_DIR_DEFAULT)
 os.environ.setdefault('HF_HUB_DISABLE_PROGRESS_BARS', 'true')
 os.environ.setdefault('HF_HUB_ETAG_TIMEOUT', '10')
 
-# 设置ModelScope缓存目录
-MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', os.path.join(os.path.expanduser("~"), '.cache', 'modelscope'))
+# 设置ModelScope缓存目录 - 使用与Docker卷挂载一致的路径
+# 这需要在任何modelscope相关模块导入之前设置
+MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', '/app/.cache/modelscope')
 os.environ.setdefault('MODELSCOPE_CACHE_HOME', MODELSCOPE_CACHE_DIR)
+os.environ['MODELSCOPE_CACHE_HOME'] = MODELSCOPE_CACHE_DIR
 
 class Config:
     """应用配置类"""
@@ -36,7 +38,7 @@ class Config:
     LOG_BACKUP_COUNT = 5
 
     # 模型配置
-    MODEL_CACHE_DIR = os.getenv('MODEL_CACHE_DIR', os.path.join(os.path.expanduser("~"), '.cache', 'cemotion'))
+    MODEL_CACHE_DIR = os.getenv('MODEL_CACHE_DIR', '/app/.cemotion_cache')
 
     # cemotion多源下载配置 (国内外镜像)
     MODEL_SOURCES = {
@@ -51,13 +53,13 @@ class Config:
     MODEL_DOWNLOAD_TIMEOUT = int(os.getenv('MODEL_DOWNLOAD_TIMEOUT', '60'))  # 下载超时时间(秒)
 
     # Hugging Face配置
-    HF_CACHE_DIR = os.getenv('HF_HOME', os.path.join(os.path.expanduser("~"), '.cache', 'huggingface'))
+    HF_CACHE_DIR = os.getenv('HF_HOME', '/app/.cache/huggingface')
     HF_ENDPOINT = os.getenv('HF_ENDPOINT', 'https://huggingface.co')
     # 使用国内镜像加速Hugging Face下载
     HF_MIRROR = os.getenv('HF_MIRROR', 'https://hf-mirror.com')  # 或使用 'https://huggingface.co' (官方)
 
     # ModelScope配置
-    MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', os.path.join(os.path.expanduser("~"), '.cache', 'modelscope'))
+    MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', '/app/.cache/modelscope')
 
     # API配置
     MAX_TEXT_LENGTH = int(os.getenv('MAX_TEXT_LENGTH', '512'))
