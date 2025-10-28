@@ -17,7 +17,7 @@
 
 ```bash
 # 1. 克隆项目
-git clone <repository-url>
+git clone https://github.com/0xByteBard404/SentiScore.git
 cd SentiScore
 
 # 2. 安装依赖
@@ -33,10 +33,10 @@ python app.py
 
 ```bash
 # 构建镜像
-docker build -t SentiScore .
+docker build -t sentiscore .
 
 # 运行容器
-docker run -d -p 5000:5000 SentiScore
+docker run -d -p 5000:5000 sentiscore
 ```
 
 ### Docker Compose部署
@@ -55,12 +55,52 @@ curl -X POST http://localhost:5000/analyze \
      -d '{"text": "今天天气很好，我很开心"}'
 ```
 
+响应示例：
+```json
+{
+  "data": {
+    "confidence": 0.9999,
+    "emotion": "正面",
+    "emotion_score": 0.999962,
+    "text_length": 11
+  },
+  "timestamp": 1761632396
+}
+```
+
 ### 批量情感分析
 
 ```bash
 curl -X POST http://localhost:5000/batch \
      -H "Content-Type: application/json" \
      -d '{"texts": ["今天天气很好", "我很开心", "但也有点累"]}'
+```
+
+响应示例：
+```json
+{
+  "data": [
+    {
+      "confidence": 0.9999,
+      "emotion": "正面",
+      "emotion_score": 0.999963,
+      "text_length": 6
+    },
+    {
+      "confidence": 0.9999,
+      "emotion": "正面",
+      "emotion_score": 0.999962,
+      "text_length": 4
+    },
+    {
+      "confidence": 0.805,
+      "emotion": "负面",
+      "emotion_score": 0.097476,
+      "text_length": 5
+    }
+  ],
+  "timestamp": 1761632419
+}
 ```
 
 ## 配置说明
@@ -74,6 +114,3 @@ curl -X POST http://localhost:5000/batch \
 
 更多详细配置请参考 [config.py](config.py) 文件。
 
-## 许可证
-
-MIT License
