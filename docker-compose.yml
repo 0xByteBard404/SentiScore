@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  SentiScore:
+  sentiscore:
     build: .
     ports:
       - "5000:5000"
@@ -11,6 +11,7 @@ services:
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=false
+      - MODEL_CACHE_DIR=/app/.cemotion_cache
       # 多源下载配置 - 使用国内外镜像
       - MODEL_DOWNLOAD_STRATEGY=cn_priority
       - HF_ENDPOINT=https://hf-mirror.com

@@ -45,6 +45,14 @@ logger.info("配置验证完成")
 
 app = Flask(__name__)
 
+# 配置JSON编码器，确保中文字符不会被转义
+from flask.json.provider import DefaultJSONProvider
+
+class CustomJSONProvider(DefaultJSONProvider):
+    ensure_ascii = False
+
+app.json = CustomJSONProvider(app)
+
 # 初始化情感分析器
 try:
     analyzer = Cemotion(config)

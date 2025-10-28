@@ -31,7 +31,7 @@ def register_routes(app, analyzer, config):
     @app.before_request
     def log_request_info():
         """记录请求信息"""
-        client_ip = get_client_ip()
+        client_ip = get_client_ip(request)
         method = request.method
         path = request.path
         app.logger.debug(f"[{client_ip}] {method} {path} - Headers: {dict(request.headers)}")
