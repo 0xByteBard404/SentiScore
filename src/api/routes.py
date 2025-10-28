@@ -6,6 +6,7 @@ from flask import request, jsonify
 from dataclasses import asdict
 
 from src.utils.helpers import create_error_response, create_success_response, get_client_ip, EmotionResult
+from src.core.segmentor import TextSegmentor
 
 
 def register_routes(app, analyzer, config):
@@ -202,3 +203,89 @@ def register_routes(app, analyzer, config):
             pass
 
         return jsonify(metrics)
+    
+    @app.route('/segment', methods=['POST'])
+    def segment_text():
+        """文本分词接口"""
+        start_time = time.time()
+        
+        try:
+            # 解析请求数据
+            data = request.get_json(silent=True)
+            if not data:
+                return create_error_response("INVALID_JSON", "无效的JSON格式", 400)
+            
+            text = data.get('text', '').strip()
+            
+            # 输入验证
+            segmentor = TextSegmentor()
+            is_valid, error = segmentor.validate_input(text)
+            if not is_valid:
+                return create_error_response(error.code, error.message, 400, error.details)
+            
+            # 执行文本分词
+            result = segmentor.segment_single(text)
+            
+            # 记录处理时间
+            processing_time = time.time() - start_time
+            app.logger.info(f"[文本分词] 耗时: {processing_time:.4f}秒")
+            
+            return create_success_response({
+                "tokens": result,
+                "text_length": len(text),
+                "token_count": len(result)
+            })
+            
+        except Exception as e:
+            app.logger.error(f"文本分词错误: {traceback.format_exc()}")
+            return create_error_response("SEGMENT_ERROR", "文本分词失败", 500)
+
+    @app.route('/segment/batch', methods=['POST'])
+    def batch_segment():
+        """批量文本分词接口"""
+        start_time = time.time()
+        
+        try:
+            # 解析请求数据
+            data = request.get_json(silent=True)
+            if not data:
+                return create_error_response("INVALID_JSON", "无效的JSON格式", 400)
+                
+            texts = data.get('texts', [])
+            if not isinstance(texts, list):
+                return create_error_response("INVALID_TYPE", "texts必须是数组", 400)
+                
+            if not texts:
+                return create_error_response("EMPTY_BATCH", "texts数组不能为空", 400)
+                
+            # 验证所有文本
+            for i, text in enumerate(texts):
+                if not isinstance(text, str):
+                    return create_error_response("INVALID_TEXT_TYPE", f"第{i}个文本不是字符串类型", 400)
+                    
+                is_valid, error = TextSegmentor().validate_input(text)
+                if not is_valid:
+                    return create_error_response(error.code, f"第{i}个文本验证失败: {error.message}", 400, error.details)
+            
+            # 执行批量分词
+            try:
+                segmentor = TextSegmentor()
+                results = segmentor.segment_batch(texts)
+                formatted_results = []
+                for text, tokens in zip(texts, results):
+                    formatted_results.append({
+                        "tokens": tokens,
+                        "text_length": len(text),
+                        "token_count": len(tokens)
+                    })
+            except Exception as e:
+                app.logger.error(f"批量分词处理失败: {e}")
+                return create_error_response("BATCH_SEGMENT_ERROR", f"批量分词处理失败: {str(e)}", 500)
+                
+            processing_time = time.time() - start_time
+            app.logger.info(f"[批量文本分词] 处理数量: {len(texts)}, 耗时: {processing_time:.4f}秒")
+            return create_success_response(formatted_results)
+            
+        except Exception as e:
+            app.logger.error(f"批量分词错误: {traceback.format_exc()}")
+            return create_error_response("BATCH_SEGMENT_ERROR", "批量分词失败", 500)
