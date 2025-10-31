@@ -1,17 +1,18 @@
-# 仅后端服务的Docker Compose配置
-# 注意：此配置文件仅用于运行后端服务
-# 如需同时部署前端和后端，请使用 docker-compose.full.yml
 version: '3.8'
 
 services:
-  sentiscore:
-    build: .
+  # 后端服务
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     volumes:
       # 持久化模型缓存，避免重复下载
       - ./models/cemotion_cache:/app/.cemotion_cache
       - ./models/modelscope_cache:/app/.cache/modelscope
+      - ./models/huggingface_cache:/app/.cache/huggingface
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=false
@@ -23,3 +24,14 @@ services:
       - HF_MIRROR=https://hf-mirror.com
     restart: unless-stopped
     user: "1000:1000"  # 使用非root用户运行
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

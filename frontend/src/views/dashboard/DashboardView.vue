@@ -1,0 +1,869 @@
+<template>
+  <div class="dashboard-container">
+    <div class="dashboard-header">
+      <div class="header-content">
+        <div class="welcome-section">
+          <h1 class="dashboard-title">仪表板</h1>
+          <p class="welcome-text">欢迎回来, <span class="username">{{ userProfile.username }}</span></p>
+        </div>
+        <div class="header-actions">
+          <el-button type="primary" @click="refreshData" :loading="loading" class="refresh-btn">
+            <el-icon><Refresh /></el-icon>
+            刷新数据
+          </el-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 关键指标卡片 -->
+    <div class="stats-section">
+      <div class="stats-grid">
+        <div class="stat-card primary-card">
+          <div class="stat-icon">
+            <el-icon size="24" color="#409eff"><Key /></el-icon>
+          </div>
+          <div class="stat-info">
+            <h3 class="stat-label">总密钥数</h3>
+            <p class="stat-value">{{ statistics.total_api_keys !== undefined ? statistics.total_api_keys : '∞' }}</p>
+          </div>
+        </div>
+        
+        <div class="stat-card info-card">
+          <div class="stat-icon">
+            <el-icon size="24" color="#909399"><DataLine /></el-icon>
+          </div>
+          <div class="stat-info">
+            <h3 class="stat-label">总调用</h3>
+            <p class="stat-value">{{ Math.max(0, statistics.summary?.total_calls || 0) }}</p>
+          </div>
+        </div>
+        
+        <div class="stat-card warning-card">
+          <div class="stat-icon">
+            <el-icon size="24" color="#e6a23c"><Clock /></el-icon>
+          </div>
+          <div class="stat-info">
+            <h3 class="stat-label">今日调用</h3>
+            <p class="stat-value">{{ todayCalls }}</p>
+          </div>
+        </div>
+        
+        <div class="stat-card success-card">
+          <div class="stat-icon">
+            <el-icon size="24" color="#67c23a"><Medal /></el-icon>
+          </div>
+          <div class="stat-info">
+            <h3 class="stat-label">剩余配额</h3>
+            <p class="stat-value">∞</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 图表区域 -->
+    <div class="charts-section">
+      <el-row :gutter="20">
+        <el-col :span="16">
+          <div class="chart-card">
+            <div class="card-header">
+              <h3 class="chart-title">最近7天调用统计</h3>
+            </div>
+            <div class="chart-container">
+              <div ref="chartRef" class="chart-wrapper"></div>
+            </div>
+          </div>
+        </el-col>
+        <el-col :span="8">
+          <div class="chart-card">
+            <div class="card-header">
+              <h3 class="chart-title">调用成功/失败</h3>
+            </div>
+            <div class="chart-container">
+              <div ref="successFailChartRef" class="chart-wrapper"></div>
+            </div>
+          </div>
+        </el-col>
+      </el-row>
+    </div>
+
+    <!-- API调用类型统计 -->
+    <div class="charts-section">
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <div class="chart-card">
+            <div class="card-header">
+              <h3 class="chart-title">API调用类型统计</h3>
+            </div>
+            <div class="chart-container">
+              <div ref="apiTypeChartRef" class="chart-wrapper"></div>
+            </div>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="chart-card">
+            <div class="card-header">
+              <h3 class="chart-title">情感分析 vs 文本分词</h3>
+            </div>
+            <div class="chart-container">
+              <div ref="barChartRef" class="chart-wrapper"></div>
+            </div>
+          </div>
+        </el-col>
+      </el-row>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, watch, computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import * as echarts from 'echarts'
+import type { ECharts } from 'echarts'
+import { getUserStatistics, getUserProfile } from '@/api/user'
+import type { UserProfile } from '@/api/user'
+import { ElMessage } from 'element-plus'
+import { 
+  Key, 
+  DataLine, 
+  Medal, 
+  Clock,
+  Refresh
+} from '@element-plus/icons-vue'
+
+// 定义数据接口
+interface DailyCall {
+  date: string
+  count: number
+}
+
+interface EndpointUsage {
+  endpoint: string
+  count: number
+}
+
+interface StatisticsData {
+  period: string
+  date_range: {
+    start_date: string
+    end_date: string
+  }
+  summary: {
+    total_calls: number
+    successful_calls: number
+    failed_calls: number
+    avg_response_time: number
+  }
+  daily_calls: DailyCall[]
+  endpoint_usage: EndpointUsage[]
+  total_api_keys?: number
+}
+
+const authStore = useAuthStore()
+const loading = ref(false)
+
+// 用户基本信息
+const userProfile = ref<UserProfile>({
+  id: 0,
+  username: '',
+  email: '',
+  created_at: '',
+  last_login: null,
+  is_active: true,
+  email_verified: false
+})
+
+// 统计数据
+const statistics = ref<StatisticsData>({
+  period: 'week',
+  date_range: {
+    start_date: '',
+    end_date: ''
+  },
+  summary: {
+    total_calls: 0,
+    successful_calls: 0,
+    failed_calls: 0,
+    avg_response_time: 0
+  },
+  daily_calls: [],
+  endpoint_usage: [],
+  total_api_keys: 0
+})
+
+// 计算今日调用次数 - 修复逻辑确保正确显示
+const todayCalls = computed(() => {
+  // 获取今天的日期字符串 (YYYY-MM-DD) - 使用UTC时间
+  const today = new Date().toISOString().split('T')[0]
+  
+  // 在daily_calls中查找今天的记录
+  const todayData = statistics.value.daily_calls.find(item => item.date === today)
+  
+  // 如果找到今天的记录，返回调用次数；否则返回0
+  return todayData ? Math.max(0, todayData.count) : 0
+})
+
+// 图表引用
+const chartRef = ref<HTMLDivElement | null>(null)
+const apiTypeChartRef = ref<HTMLDivElement | null>(null)
+const barChartRef = ref<HTMLDivElement | null>(null)
+const successFailChartRef = ref<HTMLDivElement | null>(null)
+let chartInstance: ECharts | null = null
+let apiTypeChartInstance: ECharts | null = null
+let barChartInstance: ECharts | null = null
+let successFailChartInstance: ECharts | null = null
+
+// 刷新数据
+const refreshData = async () => {
+  loading.value = true
+  try {
+    await Promise.all([
+      loadUserProfile(),
+      loadStatistics()
+    ])
+    ElMessage.success('数据刷新成功')
+  } catch (error) {
+    ElMessage.error('数据刷新失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 初始化图表
+const initChart = () => {
+  if (chartRef.value) {
+    chartInstance = echarts.init(chartRef.value)
+  }
+  if (apiTypeChartRef.value) {
+    apiTypeChartInstance = echarts.init(apiTypeChartRef.value)
+  }
+  if (barChartRef.value) {
+    barChartInstance = echarts.init(barChartRef.value)
+  }
+  if (successFailChartRef.value) {
+    successFailChartInstance = echarts.init(successFailChartRef.value)
+  }
+  updateChart()
+  updateApiTypeChart()
+  updateBarChart()
+  updateSuccessFailChart()
+}
+
+// 更新主图表（最近7天调用统计）
+const updateChart = () => {
+  if (chartInstance && statistics.value.daily_calls.length > 0) {
+    const dates = statistics.value.daily_calls.map((item: DailyCall) => item.date)
+    // 确保数量是自然整数
+    const counts = statistics.value.daily_calls.map((item: DailyCall) => Math.max(0, Math.floor(item.count)))
+    
+    // 计算Y轴的最大值，增加10%的顶部边距以改善视觉效果
+    const maxValue = Math.max(...counts, 0)
+    const yAxisMax = maxValue > 0 ? Math.ceil(maxValue * 1.1) : 10
+    
+    // 当最大值较小时，使用更合适的间隔
+    let interval = null
+    if (yAxisMax <= 10) {
+      interval = 1
+    } else if (yAxisMax <= 50) {
+      interval = 5
+    } else if (yAxisMax <= 100) {
+      interval = 10
+    } else {
+      interval = Math.ceil(yAxisMax / 10)
+    }
+    
+    // 为不同的日期生成颜色渐变
+    const colors = [
+      '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', 
+      '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc'
+    ]
+    
+    // 创建数据项数组，每个数据项包含值和颜色
+    const dataItems = counts.map((count: number, index: number) => ({
+      value: count,
+      itemStyle: {
+        color: colors[index % colors.length]
+      }
+    }))
+    
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: 'rgba(15, 26, 48, 0.9)',
+        borderColor: 'rgba(64, 158, 255, 0.5)',
+        textStyle: {
+          color: '#fff'
+        },
+        formatter: (params: any) => {
+          return `${params.name}<br/>调用次数: ${params.value}`
+        }
+      },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisLabel: {
+          color: '#a0c3ff',
+          rotate: 45
+        },
+        axisLine: {
+          lineStyle: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          }
+        }
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: yAxisMax,
+        interval: interval,
+        axisLabel: {
+          color: '#a0c3ff',
+          formatter: (value: number) => {
+            const intValue = Math.max(0, Math.floor(value))
+            return intValue.toString()
+          }
+        },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            color: 'rgba(255, 255, 255, 0.05)'
+          }
+        }
+      },
+      series: [{
+        data: dataItems,
+        type: 'bar',
+        barWidth: '60%',
+        label: {
+          show: true,
+          position: 'top',
+          color: '#fff',
+          formatter: (params: any) => {
+            return Math.max(0, Math.floor(params.value)).toString()
+          }
+        },
+        itemStyle: {
+          borderRadius: [4, 4, 0, 0],
+          color: (params: any) => {
+            return colors[params.dataIndex % colors.length]
+          }
+        }
+      }],
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '15%',
+        top: '10%',
+        containLabel: true
+      }
+    }
+    
+    chartInstance.setOption(option)
+  }
+}
+
+// 更新API调用类型统计图表
+const updateApiTypeChart = () => {
+  if (apiTypeChartInstance && statistics.value.endpoint_usage.length > 0) {
+    // 按端点分组统计
+    const endpointData = statistics.value.endpoint_usage.map((item: EndpointUsage) => ({
+      name: item.endpoint,
+      value: item.count
+    }))
+    
+    // 颜色方案
+    const colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452']
+    
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: 'rgba(15, 26, 48, 0.9)',
+        borderColor: 'rgba(64, 158, 255, 0.5)',
+        textStyle: {
+          color: '#fff'
+        },
+        formatter: '{a} <br/>{b}: {c} ({d}%)'
+      },
+      legend: {
+        bottom: '5%',
+        left: 'center',
+        textStyle: {
+          color: '#a0c3ff'
+        }
+      },
+      series: [
+        {
+          name: 'API调用类型',
+          type: 'pie',
+          radius: ['40%', '70%'],
+          avoidLabelOverlap: false,
+          itemStyle: {
+            borderRadius: 10,
+            borderColor: 'rgba(15, 26, 48, 0.8)',
+            borderWidth: 2
+          },
+          label: {
+            show: false,
+            position: 'center'
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: '14',
+              fontWeight: 'bold',
+              color: '#fff'
+            }
+          },
+          labelLine: {
+            show: false
+          },
+          data: endpointData,
+          color: colors
+        }
+      ]
+    }
+    
+    apiTypeChartInstance.setOption(option)
+  }
+}
+
+// 更新柱状图（情感分析 vs 文本分词）
+const updateBarChart = () => {
+  if (barChartInstance && statistics.value.endpoint_usage.length > 0) {
+    // 分类统计情感分析和文本分词
+    let emotionCount = 0
+    let segmentCount = 0
+    
+    statistics.value.endpoint_usage.forEach((item: EndpointUsage) => {
+      if (item.endpoint.includes('/analyze')) {
+        emotionCount += item.count
+      } else if (item.endpoint.includes('/segment')) {
+        segmentCount += item.count
+      }
+    })
+    
+    const data = [
+      { name: '情感分析', value: emotionCount, color: '#5470c6' },
+      { name: '文本分词', value: segmentCount, color: '#91cc75' }
+    ]
+    
+    const option = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
+        },
+        backgroundColor: 'rgba(15, 26, 48, 0.9)',
+        borderColor: 'rgba(64, 158, 255, 0.5)',
+        textStyle: {
+          color: '#fff'
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: '10%',
+        containLabel: true
+      },
+      xAxis: [
+        {
+          type: 'category',
+          data: data.map(item => item.name),
+          axisTick: {
+            alignWithLabel: true
+          },
+          axisLabel: {
+            color: '#a0c3ff'
+          },
+          axisLine: {
+            lineStyle: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            }
+          }
+        }
+      ],
+      yAxis: [
+        {
+          type: 'value',
+          axisLabel: {
+            color: '#a0c3ff'
+          },
+          splitLine: {
+            show: true,
+            lineStyle: {
+              color: 'rgba(255, 255, 255, 0.05)'
+            }
+          }
+        }
+      ],
+      series: [
+        {
+          name: '调用次数',
+          type: 'bar',
+          barWidth: '60%',
+          data: data.map(item => ({
+            value: item.value,
+            itemStyle: {
+              color: item.color
+            }
+          })),
+          label: {
+            show: true,
+            position: 'top',
+            color: '#fff',
+            formatter: (params: any) => {
+              return Math.max(0, Math.floor(params.value)).toString()
+            }
+          }
+        }
+      ]
+    }
+    
+    barChartInstance.setOption(option)
+  }
+}
+
+// 更新调用成功/失败饼图
+const updateSuccessFailChart = () => {
+  if (successFailChartInstance) {
+    const successCount = statistics.value.summary?.successful_calls || 0
+    const failedCount = statistics.value.summary?.failed_calls || 0
+    
+    const data = [
+      { name: '成功', value: successCount, color: '#67c23a' },
+      { name: '失败', value: failedCount, color: '#f56c6c' }
+    ]
+    
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: 'rgba(15, 26, 48, 0.9)',
+        borderColor: 'rgba(64, 158, 255, 0.5)',
+        textStyle: {
+          color: '#fff'
+        },
+        formatter: '{a} <br/>{b}: {c} ({d}%)'
+      },
+      legend: {
+        bottom: '5%',
+        left: 'center',
+        textStyle: {
+          color: '#a0c3ff'
+        }
+      },
+      series: [
+        {
+          name: '调用结果',
+          type: 'pie',
+          radius: ['40%', '70%'],
+          avoidLabelOverlap: false,
+          itemStyle: {
+            borderRadius: 10,
+            borderColor: 'rgba(15, 26, 48, 0.8)',
+            borderWidth: 2
+          },
+          label: {
+            show: false,
+            position: 'center'
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: '14',
+              fontWeight: 'bold',
+              color: '#fff'
+            }
+          },
+          labelLine: {
+            show: false
+          },
+          data: data,
+          color: data.map(item => item.color)
+        }
+      ]
+    }
+    
+    successFailChartInstance.setOption(option)
+  }
+}
+
+// 加载用户信息
+const loadUserProfile = async () => {
+  try {
+    const profileData = await getUserProfile()
+    userProfile.value = profileData
+    
+    authStore.setUser({
+      id: profileData.id,
+      username: profileData.username,
+      email: profileData.email,
+      plan_name: authStore.user?.plan_name || 'Free',
+      quota_remaining: authStore.user?.quota_remaining || 0
+    })
+  } catch (error: any) {
+    console.error('加载用户信息失败:', error)
+    ElMessage.error(error.response?.data?.message || '加载用户信息失败')
+  }
+}
+
+// 加载统计数据
+const loadStatistics = async () => {
+  try {
+    const data = await getUserStatistics('week')
+    statistics.value = data
+    
+    updateChart()
+    updateApiTypeChart()
+    updateBarChart()
+    updateSuccessFailChart()
+  } catch (error: any) {
+    console.error('加载统计数据失败:', error)
+    ElMessage.error(error.response?.data?.message || '加载统计数据失败')
+  }
+}
+
+// 监听统计数据变化，更新图表
+watch(() => statistics.value.daily_calls, () => {
+  updateChart()
+})
+
+watch(() => statistics.value.endpoint_usage, () => {
+  updateApiTypeChart()
+  updateBarChart()
+})
+
+watch(() => statistics.value.summary, () => {
+  updateSuccessFailChart()
+})
+
+onMounted(() => {
+  initChart()
+  loadUserProfile()
+  loadStatistics()
+  
+  // 监听窗口大小变化，重置图表大小
+  window.addEventListener('resize', () => {
+    if (chartInstance) {
+      chartInstance.resize()
+    }
+    if (apiTypeChartInstance) {
+      apiTypeChartInstance.resize()
+    }
+    if (barChartInstance) {
+      barChartInstance.resize()
+    }
+    if (successFailChartInstance) {
+      successFailChartInstance.resize()
+    }
+  })
+})
+</script>
+
+<style scoped>
+.dashboard-container {
+  padding: 20px;
+  background: linear-gradient(135deg, #1d2b4f 0%, #0f1a30 100%);
+  min-height: 100vh;
+  color: #fff;
+  /* 隐藏滚动条但保持滚动功能 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.dashboard-container::-webkit-scrollbar {
+  display: none;
+}
+
+.dashboard-header {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.welcome-section {
+  flex: 1;
+}
+
+.dashboard-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 10px 0;
+  background: linear-gradient(90deg, #409eff, #67c23a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.welcome-text {
+  font-size: 1.1rem;
+  color: #c0d9ff;
+  margin: 0;
+}
+
+.username {
+  color: #409eff;
+  font-weight: 600;
+}
+
+.refresh-btn {
+  background: rgba(64, 158, 255, 0.1);
+  border: 1px solid rgba(64, 158, 255, 0.3);
+  color: #409eff;
+  backdrop-filter: blur(10px);
+}
+
+.refresh-btn:hover {
+  background: rgba(64, 158, 255, 0.2);
+  border-color: rgba(64, 158, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.stats-section {
+  margin-bottom: 30px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  padding: 25px 20px;
+  display: flex;
+  align-items: center;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  border-color: rgba(64, 158, 255, 0.3);
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(64, 158, 255, 0.1);
+  border-radius: 12px;
+  margin-right: 20px;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover .stat-icon {
+  background: rgba(64, 158, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 1rem;
+  color: #a0c3ff;
+  margin: 0 0 8px 0;
+  font-weight: 400;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+}
+
+.primary-card .stat-value {
+  color: #409eff;
+}
+
+.info-card .stat-value {
+  color: #909399;
+}
+
+.success-card .stat-value {
+  color: #67c23a;
+}
+
+.warning-card .stat-value {
+  color: #e6a23c;
+}
+
+.charts-section {
+  margin-bottom: 30px;
+}
+
+.chart-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
+}
+
+.chart-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  border-color: rgba(64, 158, 255, 0.3);
+}
+
+.card-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chart-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0;
+  color: #fff;
+}
+
+.chart-container {
+  padding: 20px;
+}
+
+.chart-wrapper {
+  width: 100%;
+  height: 300px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 15px;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .chart-wrapper {
+    height: 250px;
+  }
+}
+</style>

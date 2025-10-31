@@ -67,3 +67,34 @@ docker-compose.override.yml
 # Project specific
 .cemotion_cache/
 cemotion_cache/
+
+# other
+dev_doc
+
+models/cemotion_cache
+models/huggingface_cache
+models/modelscope_cache
+
+backend/logs
+backend/instance
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build output
+dist/
+build/
+coverage/
+
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
