@@ -177,22 +177,11 @@ def register_routes(app, emotion_analyzer=None, text_segmentor=None):
             # 记录API调用（如果用户已认证）
             user_id = user.id
             if user_id:
-                # 检查并扣减配额
                 auth_service = AuthService()
-                quota_valid, quota_msg = auth_service.check_user_quota(user)
-                if not quota_valid:
-                    return api_response(
-                        code=403,
-                        message=quota_msg
-                    ), 403
                 
-                # 扣减配额
-                auth_service.deduct_user_quota(user, 1)
-                
-                # 如果是通过API密钥认证的，也扣减API密钥的配额
                 # 检查请求中是否包含API密钥
                 api_key_value = None
-                specific_api_key = None  # 初始化变量
+                specific_api_key = None
                 if 'X-API-Key' in request.headers:
                     api_key_value = request.headers.get('X-API-Key')
                 elif 'api_key' in request.args:
@@ -200,21 +189,28 @@ def register_routes(app, emotion_analyzer=None, text_segmentor=None):
                 elif 'api_key' in request.form:
                     api_key_value = request.form.get('api_key')
                 
-                # 如果使用了API密钥，则也扣减API密钥的配额
+                # 如果使用了API密钥，则只检查和扣减API密钥的配额
                 if api_key_value:
-                    api_key_record = auth_service.verify_api_key(api_key_value)
-                    if api_key_record and hasattr(api_key_record, 'api_keys'):
-                        # 获取对应的API密钥对象
-                        specific_api_key = APIKey.query.filter_by(key=api_key_value, user_id=user.id).first()
-                        if specific_api_key:
-                            # 检查API密钥配额
-                            if specific_api_key.quota_used >= specific_api_key.quota_total:
-                                return api_response(
-                                    code=403,
-                                    message="API密钥配额已用完，请升级套餐或购买更多配额"
-                                ), 403
-                            # 扣减API密钥配额
-                            auth_service.deduct_api_key_quota(specific_api_key, 1)
+                    specific_api_key = APIKey.query.filter_by(key=api_key_value, user_id=user.id).first()
+                    if specific_api_key:
+                        # 检查API密钥配额
+                        if specific_api_key.quota_used >= specific_api_key.quota_total:
+                            return api_response(
+                                code=403,
+                                message="API密钥配额已用完，请升级套餐或购买更多配额"
+                            ), 403
+                        # 扣减API密钥配额
+                        auth_service.deduct_api_key_quota(specific_api_key, 1)
+                else:
+                    # 如果没有使用API密钥，则检查并扣减用户套餐配额
+                    quota_valid, quota_msg = auth_service.check_user_quota(user)
+                    if not quota_valid:
+                        return api_response(
+                            code=403,
+                            message=quota_msg
+                        ), 403
+                    # 扣减用户套餐配额
+                    auth_service.deduct_user_quota(user, 1)
                 
                 # 记录API调用
                 api_call = APICall()
@@ -355,22 +351,11 @@ def register_routes(app, emotion_analyzer=None, text_segmentor=None):
             # 记录API调用（如果用户已认证）
             user_id = user.id
             if user_id:
-                # 检查并扣减配额
                 auth_service = AuthService()
-                quota_valid, quota_msg = auth_service.check_user_quota(user)
-                if not quota_valid:
-                    return api_response(
-                        code=403,
-                        message=quota_msg
-                    ), 403
                 
-                # 扣减配额（批量处理按文本数量扣减）
-                auth_service.deduct_user_quota(user, len(texts))
-                
-                # 如果是通过API密钥认证的，也扣减API密钥的配额
                 # 检查请求中是否包含API密钥
                 api_key_value = None
-                specific_api_key = None  # 初始化变量
+                specific_api_key = None
                 if 'X-API-Key' in request.headers:
                     api_key_value = request.headers.get('X-API-Key')
                 elif 'api_key' in request.args:
@@ -378,21 +363,28 @@ def register_routes(app, emotion_analyzer=None, text_segmentor=None):
                 elif 'api_key' in request.form:
                     api_key_value = request.form.get('api_key')
                 
-                # 如果使用了API密钥，则也扣减API密钥的配额
+                # 如果使用了API密钥，则只检查和扣减API密钥的配额
                 if api_key_value:
-                    api_key_record = auth_service.verify_api_key(api_key_value)
-                    if api_key_record and hasattr(api_key_record, 'api_keys'):
-                        # 获取对应的API密钥对象
-                        specific_api_key = APIKey.query.filter_by(key=api_key_value, user_id=user.id).first()
-                        if specific_api_key:
-                            # 检查API密钥配额
-                            if specific_api_key.quota_used >= specific_api_key.quota_total:
-                                return api_response(
-                                    code=403,
-                                    message="API密钥配额已用完，请升级套餐或购买更多配额"
-                                ), 403
-                            # 扣减API密钥配额（批量处理按文本数量扣减）
-                            auth_service.deduct_api_key_quota(specific_api_key, len(texts))
+                    specific_api_key = APIKey.query.filter_by(key=api_key_value, user_id=user.id).first()
+                    if specific_api_key:
+                        # 检查API密钥配额
+                        if specific_api_key.quota_used >= specific_api_key.quota_total:
+                            return api_response(
+                                code=403,
+                                message="API密钥配额已用完，请升级套餐或购买更多配额"
+                            ), 403
+                        # 扣减API密钥配额（批量处理按文本数量扣减）
+                        auth_service.deduct_api_key_quota(specific_api_key, len(texts))
+                else:
+                    # 如果没有使用API密钥，则检查并扣减用户套餐配额
+                    quota_valid, quota_msg = auth_service.check_user_quota(user)
+                    if not quota_valid:
+                        return api_response(
+                            code=403,
+                            message=quota_msg
+                        ), 403
+                    # 扣减用户套餐配额（批量处理按文本数量扣减）
+                    auth_service.deduct_user_quota(user, len(texts))
                 
                 # 记录API调用
                 api_call = APICall()
@@ -479,22 +471,45 @@ def register_routes(app, emotion_analyzer=None, text_segmentor=None):
             # 记录API调用（如果用户已认证）
             user_id = user.id
             if user_id:
-                # 检查并扣减配额
                 auth_service = AuthService()
-                quota_valid, quota_msg = auth_service.check_user_quota(user)
-                if not quota_valid:
-                    return api_response(
-                        code=403,
-                        message=quota_msg
-                    ), 403
                 
-                # 扣减配额
-                auth_service.deduct_user_quota(user, 1)
+                # 检查请求中是否包含API密钥
+                api_key_value = None
+                specific_api_key = None
+                if 'X-API-Key' in request.headers:
+                    api_key_value = request.headers.get('X-API-Key')
+                elif 'api_key' in request.args:
+                    api_key_value = request.args.get('api_key')
+                elif 'api_key' in request.form:
+                    api_key_value = request.form.get('api_key')
+                
+                # 如果使用了API密钥，则只检查和扣减API密钥的配额
+                if api_key_value:
+                    specific_api_key = APIKey.query.filter_by(key=api_key_value, user_id=user.id).first()
+                    if specific_api_key:
+                        # 检查API密钥配额
+                        if specific_api_key.quota_used >= specific_api_key.quota_total:
+                            return api_response(
+                                code=403,
+                                message="API密钥配额已用完，请升级套餐或购买更多配额"
+                            ), 403
+                        # 扣减API密钥配额
+                        auth_service.deduct_api_key_quota(specific_api_key, 1)
+                else:
+                    # 如果没有使用API密钥，则检查并扣减用户套餐配额
+                    quota_valid, quota_msg = auth_service.check_user_quota(user)
+                    if not quota_valid:
+                        return api_response(
+                            code=403,
+                            message=quota_msg
+                        ), 403
+                    # 扣减用户套餐配额
+                    auth_service.deduct_user_quota(user, 1)
                 
                 # 记录API调用
                 api_call = APICall()
                 api_call.user_id = user_id
-                api_call.api_key_id = None  # 单文本分词接口暂不支持API密钥
+                api_call.api_key_id = specific_api_key.id if specific_api_key else None
                 api_call.endpoint = '/segment'
                 api_call.method = 'POST'
                 api_call.response_status = 200
@@ -606,22 +621,45 @@ def register_routes(app, emotion_analyzer=None, text_segmentor=None):
             # 记录API调用（如果用户已认证）
             user_id = user.id
             if user_id:
-                # 检查并扣减配额
                 auth_service = AuthService()
-                quota_valid, quota_msg = auth_service.check_user_quota(user)
-                if not quota_valid:
-                    return api_response(
-                        code=403,
-                        message=quota_msg
-                    ), 403
                 
-                # 扣减配额（批量处理按文本数量扣减）
-                auth_service.deduct_user_quota(user, len(texts))
+                # 检查请求中是否包含API密钥
+                api_key_value = None
+                specific_api_key = None
+                if 'X-API-Key' in request.headers:
+                    api_key_value = request.headers.get('X-API-Key')
+                elif 'api_key' in request.args:
+                    api_key_value = request.args.get('api_key')
+                elif 'api_key' in request.form:
+                    api_key_value = request.form.get('api_key')
+                
+                # 如果使用了API密钥，则只检查和扣减API密钥的配额
+                if api_key_value:
+                    specific_api_key = APIKey.query.filter_by(key=api_key_value, user_id=user.id).first()
+                    if specific_api_key:
+                        # 检查API密钥配额
+                        if specific_api_key.quota_used >= specific_api_key.quota_total:
+                            return api_response(
+                                code=403,
+                                message="API密钥配额已用完，请升级套餐或购买更多配额"
+                            ), 403
+                        # 扣减API密钥配额（批量处理按文本数量扣减）
+                        auth_service.deduct_api_key_quota(specific_api_key, len(texts))
+                else:
+                    # 如果没有使用API密钥，则检查并扣减用户套餐配额
+                    quota_valid, quota_msg = auth_service.check_user_quota(user)
+                    if not quota_valid:
+                        return api_response(
+                            code=403,
+                            message=quota_msg
+                        ), 403
+                    # 扣减用户套餐配额（批量处理按文本数量扣减）
+                    auth_service.deduct_user_quota(user, len(texts))
                 
                 # 记录API调用
                 api_call = APICall()
                 api_call.user_id = user_id
-                api_call.api_key_id = None  # 批量文本分词接口暂不支持API密钥
+                api_call.api_key_id = specific_api_key.id if specific_api_key else None
                 api_call.endpoint = '/segment/batch'
                 api_call.method = 'POST'
                 api_call.response_status = 200
