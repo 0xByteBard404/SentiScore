@@ -308,6 +308,8 @@ def get_user_statistics(user):
             end_date = datetime.now(timezone.utc)
         else:
             end_date = datetime.strptime(end_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            # 将结束日期设置为当天的结束时间（23:59:59）
+            end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
             
         if not start_date:
             if period == 'day':
@@ -322,6 +324,12 @@ def get_user_statistics(user):
                 start_date = end_date - timedelta(weeks=1)
         else:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            # 将开始日期设置为当天的开始时间（00:00:00）
+            start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # 确保时间范围正确（start_date应该在end_date之前）
+        if start_date > end_date:
+            start_date, end_date = end_date, start_date
         
         # 检查是否为管理员
         from src.auth.service import AuthService
@@ -370,6 +378,18 @@ def get_user_statistics(user):
         
         # 按日期统计调用次数（只统计成功扣减配额的调用）
         daily_calls = []
+        
+        # 生成完整日期范围（包含所有日期）
+        date_range = []
+        current_date = start_date.date()
+        end_date_only = end_date.date()
+        
+        # 确保包含结束日期
+        while current_date <= end_date_only:
+            date_range.append(current_date.strftime('%Y-%m-%d'))
+            current_date += timedelta(days=1)
+        
+        # 查询数据库中的统计数据
         if period in ['day', 'week']:
             date_format = '%Y-%m-%d'
             # 使用UTC时间进行分组
@@ -384,13 +404,16 @@ def get_user_statistics(user):
             func.count(APICall.id).label('count')
         ).group_by(date_group).all()
         
-        daily_calls = [{'date': str(stat.date), 'count': stat.count} for stat in daily_stats]
+        # 创建日期统计数据字典
+        stats_dict = {str(stat.date): stat.count for stat in daily_stats}
         
-        # 确保今日数据存在 - 添加今日调用数据，即使为0（使用UTC时间）
-        today = datetime.now(timezone.utc).date().strftime('%Y-%m-%d')
-        today_exists = any(item['date'] == today for item in daily_calls)
-        if not today_exists:
-            daily_calls.append({'date': today, 'count': 0})
+        # 填充完整日期范围的数据
+        daily_calls = []
+        for date_str in date_range:
+            daily_calls.append({
+                'date': date_str,
+                'count': stats_dict.get(date_str, 0)
+            })
         
         # 按端点统计使用情况（只统计成功扣减配额的调用）
         endpoint_usage = calls_query.with_entities(
@@ -411,6 +434,8 @@ def get_user_statistics(user):
         logger.info(f"  失败调用次数: {failed_calls}")
         logger.info(f"  每日调用统计: {daily_calls}")
         logger.info(f"  端点使用情况: {endpoint_usage}")
+        
+
         
         response_data = {
             'data': {
