@@ -13,6 +13,8 @@ services:
       - ./models/cemotion_cache:/app/.cemotion_cache
       - ./models/modelscope_cache:/app/.cache/modelscope
       - ./models/huggingface_cache:/app/.cache/huggingface
+      # 持久化数据库文件
+      - ./instance:/app/instance
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=false

@@ -20,8 +20,8 @@ class DatabaseManager:
     
     def init_app(self, app):
         """初始化Flask应用"""
-        # 数据库配置 - 统一使用sentiscore.db
-        database_url = os.getenv('DATABASE_URL', 'sqlite:///sentiscore.db')
+        # 数据库配置 - 统一使用instance目录下的sentiscore.db
+        database_url = os.getenv('DATABASE_URL', 'sqlite:///instance/sentiscore.db')
         app.config['SQLALCHEMY_DATABASE_URI'] = database_url
         app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {

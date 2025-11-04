@@ -44,7 +44,6 @@ local_settings.py
 db.sqlite3
 
 # Flask stuff:
-instance/
 .webassets-cache
 
 # Testing
@@ -76,7 +75,7 @@ models/huggingface_cache
 models/modelscope_cache
 
 backend/logs
-backend/instance
+
 
 # Node.js
 node_modules/

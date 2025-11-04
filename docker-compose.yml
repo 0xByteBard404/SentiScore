@@ -12,6 +12,8 @@ services:
       # 持久化模型缓存，避免重复下载
       - ./models/cemotion_cache:/app/.cemotion_cache
       - ./models/modelscope_cache:/app/.cache/modelscope
+      # 持久化数据库文件
+      - ./instance:/app/instance
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=false
