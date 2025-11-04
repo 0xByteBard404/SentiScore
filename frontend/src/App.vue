@@ -86,13 +86,13 @@ const handleHome = () => {
           <template v-else>
             <el-button 
               type="primary" 
-              @click="$router.push({ name: 'Login' })"
+              @click="$router.push({ name: 'login' })"
               class="auth-button"
             >
               登录
             </el-button>
             <el-button 
-              @click="$router.push({ name: 'Register' })"
+              @click="$router.push({ name: 'register' })"
               class="auth-button"
             >
               注册
