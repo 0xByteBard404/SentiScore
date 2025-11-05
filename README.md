@@ -58,13 +58,26 @@ docker run -d -p 5000:5000 \
 
 ### Docker Compose部署
 
-```bash
+```
+# 创建 Docker Volume 用于数据库持久化（推荐）
+./init_volume.sh  # Linux/macOS
+# 或
+init_volume.bat   # Windows
+
+# 启动服务
 docker-compose up -d
 ```
 
 ### 完整服务部署（包含前端管理后台）
 
-```bash
+```
+# 创建 Docker Volume 用于数据库持久化（推荐）
+docker volume create SentiScore_sqlite_data
+# 或
+./init_volume.sh  # Linux/macOS
+# 或
+init_volume.bat   # Windows
+
 # 构建并启动完整的前后端服务
 docker-compose -f docker-compose.full.yml up -d
 ```
@@ -74,6 +87,49 @@ docker-compose -f docker-compose.full.yml up -d
 - 后端API: `http://localhost:5000`
 
 模型文件将被缓存到 `cemotion_cache` 和 `modelscope_cache` 目录中，避免每次容器启动时重新下载。首次运行时会下载所需模型，后续启动将直接使用缓存的模型文件。
+
+数据库文件将被持久化存储在 Docker Volume 中，即使容器被删除，数据也不会丢失。
+
+## 数据库持久化
+
+SentiScore 使用 SQLite 作为数据库，并支持多种持久化方式：
+
+### 推荐方式：使用 Docker Volume（推荐）
+
+步骤 1：创建一个命名卷（Named Volume）
+
+```bash
+docker volume create SentiScore_sqlite_data
+```
+
+步骤 2：运行容器时挂载该卷到数据库文件所在目录
+
+```bash
+docker run -d \
+  --name myapp \
+  -v SentiScore_sqlite_data:/app/instance \
+  your-app-image
+```
+
+注意：挂载的是目录，而不是单个文件，以避免权限或文件不存在的问题。
+
+这样，即使容器被删除，SentiScore_sqlite_data 卷中的数据（包括 sentiscore.db）依然保留。下次启动新容器时，只需挂载同一个卷即可继续使用原有数据。
+
+### 替代方式：绑定挂载（Bind Mount）到宿主机目录
+
+如果你希望直接在宿主机上看到数据库文件（便于备份、调试等），可以使用绑定挂载：
+
+```
+# 假设宿主机目录为 /host/sqlite_data
+mkdir -p /host/sqlite_data
+
+docker run -d \
+  --name myapp \
+  -v /host/sqlite_data:/app/instance \
+  your-app-image
+```
+
+这样，数据库文件会直接保存在宿主机的 `/host/sqlite_data/sentiscore.db` 中。
 
 ## API接口
 

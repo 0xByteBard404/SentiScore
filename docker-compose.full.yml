@@ -13,8 +13,8 @@ services:
       - ./models/cemotion_cache:/app/.cemotion_cache
       - ./models/modelscope_cache:/app/.cache/modelscope
       - ./models/huggingface_cache:/app/.cache/huggingface
-      # 持久化数据库文件
-      - ./instance:/app/instance
+      # 持久化数据库文件 - 使用 Docker Volume
+      - SentiScore_sqlite_data:/app/instance
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=false
@@ -24,8 +24,10 @@ services:
       - MODEL_DOWNLOAD_STRATEGY=cn_priority
       - HF_ENDPOINT=https://hf-mirror.com
       - HF_MIRROR=https://hf-mirror.com
+      # 数据库配置
+      - DATABASE_URL=sqlite:////app/instance/sentiscore.db
     restart: unless-stopped
-    user: "1000:1000"  # 使用非root用户运行
+    user: "appuser:appuser"  # 使用非root用户运行
 
   # 前端服务
   frontend:
@@ -37,3 +39,7 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+# 定义命名卷
+volumes:
+  SentiScore_sqlite_data:

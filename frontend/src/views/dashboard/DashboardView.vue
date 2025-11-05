@@ -198,6 +198,11 @@ const todayCalls = computed(() => {
   // 在daily_calls中查找今天的记录
   const todayData = statistics.value.daily_calls.find(item => item.date === today)
   
+  // 添加调试信息
+  console.log('Today date:', today)
+  console.log('Daily calls:', statistics.value.daily_calls)
+  console.log('Today data:', todayData)
+  
   // 如果找到今天的记录，返回调用次数；否则返回0
   return todayData ? Math.max(0, todayData.count) : 0
 })

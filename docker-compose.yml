@@ -12,8 +12,8 @@ services:
       # 持久化模型缓存，避免重复下载
       - ./models/cemotion_cache:/app/.cemotion_cache
       - ./models/modelscope_cache:/app/.cache/modelscope
-      # 持久化数据库文件
-      - ./instance:/app/instance
+      # 持久化数据库文件 - 使用 Docker Volume
+      - SentiScore_sqlite_data:/app/instance
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=false
@@ -25,3 +25,7 @@ services:
       - HF_MIRROR=https://hf-mirror.com
     restart: unless-stopped
     user: "1000:1000"  # 使用非root用户运行
+
+# 定义命名卷
+volumes:
+  SentiScore_sqlite_data:

@@ -26,8 +26,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/app.py backend/config.py ./
 COPY backend/src/ src/
 
-# 创建缓存目录
-RUN mkdir -p /app/.cemotion_cache /app/.cache/modelscope
+# 创建非root用户
+RUN adduser --disabled-password --gecos '' appuser
+
+# 创建缓存目录和数据库目录
+RUN mkdir -p /app/.cemotion_cache /app/.cache/modelscope /app/instance
+# 创建空的数据库文件并设置权限
+RUN touch /app/instance/sentiscore.db
+RUN chown -R appuser:appuser /app
 
 # 设置环境变量指向持久化缓存目录
 ENV MODEL_CACHE_DIR=/app/.cemotion_cache
@@ -35,22 +41,17 @@ ENV MODELSCOPE_CACHE_DIR=/app/.cache/modelscope
 ENV MODELSCOPE_CACHE_HOME=/app/.cache/modelscope
 ENV PYTHONPATH=/app
 
-# 创建非root用户
-RUN adduser --disabled-password --gecos '' appuser
-RUN chown -R appuser:appuser /app
-USER appuser
-
-# 暴露端口
-EXPOSE 5000
-
 # 设置环境变量
 ENV FLASK_ENV=production
 ENV FLASK_DEBUG=false
 ENV LOG_LEVEL=INFO
 
+# 暴露端口
+EXPOSE 5000
+
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# 启动命令（使用 gunicorn 以适配生产环境）
-CMD ["gunicorn", "-w", "2", "-k", "gthread", "--threads", "2", "-t", "60", "-b", "0.0.0.0:5000", "app:app"]
+# 启动命令（使用 flask run 以便于调试）
+CMD ["python", "app.py"]

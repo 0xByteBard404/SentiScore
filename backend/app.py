@@ -99,10 +99,54 @@ def missing_token_callback(error):
 
 # 初始化数据库 - 统一使用sentiscore.db数据库文件
 database_manager = DatabaseManager(app)
-database_manager.create_tables()
-database_manager.update_table_structure()  # 更新表结构
-database_manager.init_database()
-database_manager.create_default_admin()
+
+# 在应用上下文中初始化数据库
+with app.app_context():
+    # 确保instance目录存在并设置正确的权限
+    instance_dir = 'instance'
+    if not os.path.exists(instance_dir):
+        os.makedirs(instance_dir, exist_ok=True)
+        print(f"✅ 创建instance目录: {instance_dir}")
+    else:
+        print(f"ℹ️  instance目录已存在: {instance_dir}")
+    
+    # 设置目录权限（确保appuser可以写入）
+    try:
+        import stat
+        os.chmod(instance_dir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        print(f"✅ 设置instance目录权限")
+    except Exception as e:
+        print(f"⚠️  设置instance目录权限失败: {e}")
+    
+    # 确保数据库文件存在并设置正确的权限
+    db_file = os.path.join(instance_dir, 'sentiscore.db')
+    if not os.path.exists(db_file):
+        try:
+            with open(db_file, 'w') as f:
+                pass  # 创建空文件
+            print(f"✅ 创建数据库文件: {db_file}")
+        except Exception as e:
+            print(f"⚠️  创建数据库文件失败: {e}")
+    
+    # 设置数据库文件权限
+    try:
+        import stat
+        os.chmod(db_file, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        print(f"✅ 设置数据库文件权限")
+    except Exception as e:
+        print(f"⚠️  设置数据库文件权限失败: {e}")
+    
+    # 初始化数据库表和数据
+    try:
+        database_manager.create_tables()
+        database_manager.update_table_structure()  # 更新表结构
+        database_manager.init_database()
+        database_manager.create_default_admin()
+        print("✅ 数据库初始化完成")
+    except Exception as e:
+        print(f"❌ 数据库初始化失败: {e}")
+        import traceback
+        traceback.print_exc()
 
 # 添加CORS支持
 CORS(app, resources={
