@@ -129,6 +129,7 @@ import {
   Clock,
   Refresh
 } from '@element-plus/icons-vue'
+import { getBeijingToday } from '@/utils/date'
 
 // 定义数据接口
 interface DailyCall {
@@ -192,14 +193,14 @@ const statistics = ref<StatisticsData>({
 
 // 计算今日调用次数 - 修复逻辑确保正确显示
 const todayCalls = computed(() => {
-  // 获取今天的日期字符串 (YYYY-MM-DD) - 使用UTC时间
-  const today = new Date().toISOString().split('T')[0]
+  // 获取今天的日期字符串 (YYYY-MM-DD) - 使用北京时间
+  const today = getBeijingToday()
   
   // 在daily_calls中查找今天的记录
   const todayData = statistics.value.daily_calls.find(item => item.date === today)
   
   // 添加调试信息
-  console.log('Today date:', today)
+  console.log('Today date (Beijing):', today)
   console.log('Daily calls:', statistics.value.daily_calls)
   console.log('Today data:', todayData)
   
@@ -395,36 +396,35 @@ const updateApiTypeChart = () => {
           color: '#a0c3ff'
         }
       },
-      series: [
-        {
-          name: 'API调用类型',
-          type: 'pie',
-          radius: ['40%', '70%'],
-          avoidLabelOverlap: false,
-          itemStyle: {
-            borderRadius: 10,
-            borderColor: 'rgba(15, 26, 48, 0.8)',
-            borderWidth: 2
-          },
+      series: [{
+        name: '调用类型',
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['50%', '45%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 6,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: false,
+          position: 'center'
+        },
+        emphasis: {
           label: {
-            show: false,
-            position: 'center'
-          },
-          emphasis: {
-            label: {
-              show: true,
-              fontSize: '14',
-              fontWeight: 'bold',
-              color: '#fff'
-            }
-          },
-          labelLine: {
-            show: false
-          },
-          data: endpointData,
-          color: colors
-        }
-      ]
+            show: true,
+            fontSize: '16',
+            fontWeight: 'bold',
+            formatter: '{b}\n{d}%'
+          }
+        },
+        labelLine: {
+          show: false
+        },
+        data: endpointData,
+        color: colors
+      }]
     }
     
     apiTypeChartInstance.setOption(option)
@@ -434,21 +434,21 @@ const updateApiTypeChart = () => {
 // 更新柱状图（情感分析 vs 文本分词）
 const updateBarChart = () => {
   if (barChartInstance && statistics.value.endpoint_usage.length > 0) {
-    // 分类统计情感分析和文本分词
+    // 分别统计情感分析和文本分词的调用次数
     let emotionCount = 0
     let segmentCount = 0
     
     statistics.value.endpoint_usage.forEach((item: EndpointUsage) => {
-      if (item.endpoint.includes('/analyze')) {
+      if (item.endpoint.includes('analyze')) {
         emotionCount += item.count
-      } else if (item.endpoint.includes('/segment')) {
+      } else if (item.endpoint.includes('segment')) {
         segmentCount += item.count
       }
     })
     
     const data = [
-      { name: '情感分析', value: emotionCount, color: '#5470c6' },
-      { name: '文本分词', value: segmentCount, color: '#91cc75' }
+      { name: '情感分析', value: emotionCount },
+      { name: '文本分词', value: segmentCount }
     ]
     
     const option = {
@@ -461,82 +461,77 @@ const updateBarChart = () => {
         borderColor: 'rgba(64, 158, 255, 0.5)',
         textStyle: {
           color: '#fff'
+        },
+        formatter: (params: any) => {
+          return `${params[0].name}<br/>调用次数: ${params[0].value}`
         }
       },
       grid: {
         left: '3%',
         right: '4%',
-        bottom: '3%',
+        bottom: '15%',
         top: '10%',
         containLabel: true
       },
-      xAxis: [
-        {
-          type: 'category',
-          data: data.map(item => item.name),
-          axisTick: {
-            alignWithLabel: true
-          },
-          axisLabel: {
-            color: '#a0c3ff'
-          },
-          axisLine: {
-            lineStyle: {
-              color: 'rgba(255, 255, 255, 0.1)'
-            }
+      xAxis: {
+        type: 'category',
+        data: data.map(item => item.name),
+        axisLabel: {
+          color: '#a0c3ff'
+        },
+        axisLine: {
+          lineStyle: {
+            color: 'rgba(255, 255, 255, 0.1)'
           }
         }
-      ],
-      yAxis: [
-        {
-          type: 'value',
-          axisLabel: {
-            color: '#a0c3ff'
-          },
-          splitLine: {
-            show: true,
-            lineStyle: {
-              color: 'rgba(255, 255, 255, 0.05)'
-            }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          color: '#a0c3ff'
+        },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            color: 'rgba(255, 255, 255, 0.05)'
           }
         }
-      ],
-      series: [
-        {
-          name: '调用次数',
-          type: 'bar',
-          barWidth: '60%',
-          data: data.map(item => ({
-            value: item.value,
-            itemStyle: {
-              color: item.color
-            }
-          })),
-          label: {
-            show: true,
-            position: 'top',
-            color: '#fff',
-            formatter: (params: any) => {
-              return Math.max(0, Math.floor(params.value)).toString()
-            }
+      },
+      series: [{
+        data: data.map(item => item.value),
+        type: 'bar',
+        barWidth: '50%',
+        itemStyle: {
+          borderRadius: [4, 4, 0, 0],
+          color: (params: any) => {
+            const colors = ['#5470c6', '#91cc75']
+            return colors[params.dataIndex]
+          }
+        },
+        label: {
+          show: true,
+          position: 'top',
+          color: '#fff',
+          formatter: (params: any) => {
+            return Math.max(0, Math.floor(params.value)).toString()
           }
         }
-      ]
+      }]
     }
     
     barChartInstance.setOption(option)
   }
 }
 
-// 更新调用成功/失败饼图
+// 更新成功/失败图表
 const updateSuccessFailChart = () => {
   if (successFailChartInstance) {
     const successCount = statistics.value.summary?.successful_calls || 0
-    const failedCount = statistics.value.summary?.failed_calls || 0
+    const failCount = statistics.value.summary?.failed_calls || 0
     
     const data = [
-      { name: '成功', value: successCount, color: '#67c23a' },
-      { name: '失败', value: failedCount, color: '#f56c6c' }
+      { name: '成功', value: successCount },
+      { name: '失败', value: failCount }
     ]
     
     const option = {
@@ -556,136 +551,108 @@ const updateSuccessFailChart = () => {
           color: '#a0c3ff'
         }
       },
-      series: [
-        {
-          name: '调用结果',
-          type: 'pie',
-          radius: ['40%', '70%'],
-          avoidLabelOverlap: false,
-          itemStyle: {
-            borderRadius: 10,
-            borderColor: 'rgba(15, 26, 48, 0.8)',
-            borderWidth: 2
-          },
+      series: [{
+        name: '调用结果',
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['50%', '45%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 6,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: false,
+          position: 'center'
+        },
+        emphasis: {
           label: {
-            show: false,
-            position: 'center'
-          },
-          emphasis: {
-            label: {
-              show: true,
-              fontSize: '14',
-              fontWeight: 'bold',
-              color: '#fff'
-            }
-          },
-          labelLine: {
-            show: false
-          },
-          data: data,
-          color: data.map(item => item.color)
-        }
-      ]
+            show: true,
+            fontSize: '16',
+            fontWeight: 'bold',
+            formatter: '{b}\n{d}%'
+          }
+        },
+        labelLine: {
+          show: false
+        },
+        data: data,
+        color: ['#67c23a', '#f56c6c']
+      }]
     }
     
     successFailChartInstance.setOption(option)
   }
 }
 
-// 加载用户信息
-const loadUserProfile = async () => {
-  try {
-    const profileData = await getUserProfile()
-    userProfile.value = profileData
-    
-    authStore.setUser({
-      id: profileData.id,
-      username: profileData.username,
-      email: profileData.email,
-      plan_name: authStore.user?.plan_name || 'Free',
-      quota_remaining: authStore.user?.quota_remaining || 0
-    })
-  } catch (error: any) {
-    console.error('加载用户信息失败:', error)
-    ElMessage.error(error.response?.data?.message || '加载用户信息失败')
-  }
-}
-
-// 加载统计数据
+// 加载用户统计数据
 const loadStatistics = async () => {
   try {
-    const data = await getUserStatistics('week')
-    statistics.value = data
+    const response = await getUserStatistics()
+    statistics.value = response
     
+    // 更新所有图表
     updateChart()
     updateApiTypeChart()
     updateBarChart()
     updateSuccessFailChart()
-  } catch (error: any) {
+  } catch (error) {
     console.error('加载统计数据失败:', error)
-    ElMessage.error(error.response?.data?.message || '加载统计数据失败')
+    ElMessage.error('加载统计数据失败')
   }
 }
 
-// 监听统计数据变化，更新图表
-watch(() => statistics.value.daily_calls, () => {
-  updateChart()
-})
+// 加载用户基本信息
+const loadUserProfile = async () => {
+  try {
+    const response = await getUserProfile()
+    userProfile.value = response
+  } catch (error) {
+    console.error('加载用户信息失败:', error)
+    ElMessage.error('加载用户信息失败')
+  }
+}
 
-watch(() => statistics.value.endpoint_usage, () => {
-  updateApiTypeChart()
-  updateBarChart()
-})
-
-watch(() => statistics.value.summary, () => {
-  updateSuccessFailChart()
-})
-
-onMounted(() => {
+// 组件挂载时加载数据
+onMounted(async () => {
+  await Promise.all([
+    loadUserProfile(),
+    loadStatistics()
+  ])
   initChart()
-  loadUserProfile()
-  loadStatistics()
   
-  // 监听窗口大小变化，重置图表大小
+  // 监听窗口大小变化，重新调整图表大小
   window.addEventListener('resize', () => {
-    if (chartInstance) {
-      chartInstance.resize()
-    }
-    if (apiTypeChartInstance) {
-      apiTypeChartInstance.resize()
-    }
-    if (barChartInstance) {
-      barChartInstance.resize()
-    }
-    if (successFailChartInstance) {
-      successFailChartInstance.resize()
-    }
+    if (chartInstance) chartInstance.resize()
+    if (apiTypeChartInstance) apiTypeChartInstance.resize()
+    if (barChartInstance) barChartInstance.resize()
+    if (successFailChartInstance) successFailChartInstance.resize()
   })
 })
+
+// 监听统计数据变化，更新图表
+watch(() => statistics.value, () => {
+  updateChart()
+  updateApiTypeChart()
+  updateBarChart()
+  updateSuccessFailChart()
+}, { deep: true })
+
+// 组件卸载时销毁图表实例
+// 注意：在Vue 3的setup语法中，需要手动处理组件卸载
 </script>
 
 <style scoped>
 .dashboard-container {
   padding: 20px;
-  background: linear-gradient(135deg, #1d2b4f 0%, #0f1a30 100%);
-  min-height: 100vh;
+  background: linear-gradient(135deg, #0f1a30 0%, #1d2b4f 100%);
+  min-height: calc(100vh - 60px);
   color: #fff;
-  /* 隐藏滚动条但保持滚动功能 */
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.dashboard-container::-webkit-scrollbar {
-  display: none;
 }
 
 .dashboard-header {
   margin-bottom: 30px;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 15px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .header-content {
@@ -696,42 +663,31 @@ onMounted(() => {
   gap: 20px;
 }
 
-.welcome-section {
-  flex: 1;
-}
-
-.dashboard-title {
+.welcome-section h1 {
   font-size: 2rem;
-  font-weight: 700;
-  margin: 0 0 10px 0;
-  background: linear-gradient(90deg, #409eff, #67c23a);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  margin-bottom: 10px;
+  color: #fff;
 }
 
 .welcome-text {
   font-size: 1.1rem;
-  color: #c0d9ff;
-  margin: 0;
+  color: #a0c3ff;
 }
 
 .username {
   color: #409eff;
-  font-weight: 600;
+  font-weight: bold;
 }
 
 .refresh-btn {
   background: rgba(64, 158, 255, 0.1);
-  border: 1px solid rgba(64, 158, 255, 0.3);
+  border-color: rgba(64, 158, 255, 0.3);
   color: #409eff;
-  backdrop-filter: blur(10px);
 }
 
 .refresh-btn:hover {
   background: rgba(64, 158, 255, 0.2);
   border-color: rgba(64, 158, 255, 0.5);
-  transform: translateY(-2px);
 }
 
 .stats-section {
@@ -740,23 +696,24 @@ onMounted(() => {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 20px;
 }
 
 .stat-card {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 15px;
-  padding: 25px 20px;
+  padding: 20px;
   display: flex;
   align-items: center;
+  gap: 15px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-3px);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   border-color: rgba(64, 158, 255, 0.3);
 }
@@ -764,34 +721,38 @@ onMounted(() => {
 .stat-icon {
   width: 50px;
   height: 50px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.primary-card .stat-icon {
   background: rgba(64, 158, 255, 0.1);
-  border-radius: 12px;
-  margin-right: 20px;
-  transition: all 0.3s ease;
 }
 
-.stat-card:hover .stat-icon {
-  background: rgba(64, 158, 255, 0.2);
-  transform: scale(1.1);
+.info-card .stat-icon {
+  background: rgba(144, 147, 153, 0.1);
 }
 
-.stat-info {
-  flex: 1;
+.warning-card .stat-icon {
+  background: rgba(230, 162, 60, 0.1);
+}
+
+.success-card .stat-icon {
+  background: rgba(103, 194, 58, 0.1);
 }
 
 .stat-label {
-  font-size: 1rem;
-  color: #a0c3ff;
-  margin: 0 0 8px 0;
-  font-weight: 400;
+  font-size: 0.9rem;
+  color: #909399;
+  margin: 0 0 5px 0;
 }
 
 .stat-value {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 1.8rem;
+  font-weight: 600;
   margin: 0;
   color: #fff;
 }
@@ -804,12 +765,12 @@ onMounted(() => {
   color: #909399;
 }
 
-.success-card .stat-value {
-  color: #67c23a;
-}
-
 .warning-card .stat-value {
   color: #e6a23c;
+}
+
+.success-card .stat-value {
+  color: #67c23a;
 }
 
 .charts-section {

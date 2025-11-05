@@ -23,7 +23,7 @@ class APICall(db.Model):
     user_agent = db.Column(db.Text)
     batch_size = db.Column(db.Integer, default=1)  # 批量处理大小
     quota_deducted = db.Column(db.Boolean, default=False)  # 是否扣减配额
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), index=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     
     user = db.relationship('User', backref=db.backref('api_calls', lazy='dynamic'))
     api_key = db.relationship('APIKey', backref=db.backref('api_calls', lazy='dynamic'))  # API密钥关系
@@ -33,6 +33,7 @@ class APICall(db.Model):
     
     def to_dict(self):
         """转换为字典格式"""
+        from src.utils.helpers import format_datetime_for_api
         return {
             'id': self.id,
             'user_id': self.user_id,
@@ -46,7 +47,7 @@ class APICall(db.Model):
             'user_agent': self.user_agent,
             'batch_size': self.batch_size,
             'quota_deducted': self.quota_deducted,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': format_datetime_for_api(self.created_at)
         }
 
 
@@ -64,11 +65,12 @@ class Plan(db.Model):
     features = db.Column(db.JSON, default=[])  # 功能列表
     is_active = db.Column(db.Boolean, default=True)
     sort_order = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     def to_dict(self):
         """转换为字典格式"""
+        from src.utils.helpers import format_datetime_for_api
         return {
             'id': self.id,
             'name': self.name,
@@ -80,8 +82,8 @@ class Plan(db.Model):
             'features': self.features,
             'is_active': self.is_active,
             'sort_order': self.sort_order,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'created_at': format_datetime_for_api(self.created_at),
+            'updated_at': format_datetime_for_api(self.updated_at)
         }
     
     def __repr__(self):
@@ -104,8 +106,8 @@ class Order(db.Model):
     cancelled_at = db.Column(db.DateTime)
     refunded_at = db.Column(db.DateTime)
     refund_amount = db.Column(db.Numeric(10, 2))
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), index=True)
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     user = db.relationship('User', backref=db.backref('orders', lazy='dynamic'))
     plan = db.relationship('Plan')
@@ -124,6 +126,7 @@ class Order(db.Model):
     
     def to_dict(self):
         """转换为字典格式"""
+        from src.utils.helpers import format_datetime_for_api
         return {
             'id': self.id,
             'user_id': self.user_id,
@@ -133,17 +136,16 @@ class Order(db.Model):
             'status': self.status,
             'payment_method': self.payment_method,
             'payment_id': self.payment_id,
-            'paid_at': self.paid_at.isoformat() if self.paid_at else None,
-            'cancelled_at': self.cancelled_at.isoformat() if self.cancelled_at else None,
-            'refunded_at': self.refunded_at.isoformat() if self.refunded_at else None,
+            'paid_at': format_datetime_for_api(self.paid_at) if self.paid_at else None,
+            'cancelled_at': format_datetime_for_api(self.cancelled_at) if self.cancelled_at else None,
+            'refunded_at': format_datetime_for_api(self.refunded_at) if self.refunded_at else None,
             'refund_amount': float(self.refund_amount) if self.refund_amount else None,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'created_at': format_datetime_for_api(self.created_at),
+            'updated_at': format_datetime_for_api(self.updated_at)
         }
     
     def __repr__(self):
         return f'<Order {self.order_no}:{self.status}>'
-
 
 # 初始化默认套餐数据
 def init_default_plans():

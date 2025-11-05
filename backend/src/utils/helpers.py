@@ -13,6 +13,7 @@ import warnings
 from transformers import logging as transformers_logging
 import json
 import re
+from datetime import datetime, timezone, timedelta
 
 from config import config
 
@@ -80,6 +81,31 @@ def setup_logging():
     logger.addHandler(file_handler)
 
     return logger
+
+
+def utc_to_beijing(utc_time: datetime) -> datetime:
+    """将UTC时间转换为北京时间"""
+    if utc_time is None:
+        return None
+    if utc_time.tzinfo is None:
+        # 如果没有时区信息，假设它是UTC时间
+        utc_time = utc_time.replace(tzinfo=timezone.utc)
+    elif utc_time.tzinfo != timezone.utc:
+        # 如果有时区信息但不是UTC，先转换为UTC
+        utc_time = utc_time.astimezone(timezone.utc)
+    
+    # 转换为北京时间 (UTC+8)
+    beijing_tz = timezone(timedelta(hours=8))
+    return utc_time.astimezone(beijing_tz)
+
+
+def format_datetime_for_api(dt: datetime) -> Optional[str]:
+    """格式化日期时间为ISO格式字符串，用于API响应"""
+    if dt is None:
+        return None
+    # 转换为北京时间并格式化
+    beijing_time = utc_to_beijing(dt)
+    return beijing_time.isoformat() if beijing_time else None
 
 
 def determine_download_strategy(source_url: str) -> str:
@@ -198,19 +224,27 @@ def download_model_with_multiple_sources(cache_dir: str, sources: Dict[str, str]
 
 def get_model_path(config) -> str:
     """获取模型文件路径，支持多源下载"""
+    # 创建缓存目录
     cache_dir = config.MODEL_CACHE_DIR
-    strategy = config.MODEL_DOWNLOAD_STRATEGY
-
-    success, result = download_model_with_multiple_sources(
-        cache_dir=cache_dir,
-        sources=config.MODEL_SOURCES,
-        strategy=strategy
+    os.makedirs(cache_dir, exist_ok=True)
+    
+    # 定义模型下载源
+    model_sources = {
+        'gitee': 'https://gitee.com/voidful/cemotion/releases/download/v2.0/cemotion_2.0.pt',
+        'github': 'https://github.com/voidful/cemotion/releases/download/v2.0/cemotion_2.0.pt'
+    }
+    
+    # 尝试下载模型
+    success, filepath = download_model_with_multiple_sources(
+        cache_dir, 
+        model_sources, 
+        config.MODEL_DOWNLOAD_STRATEGY
     )
-
+    
     if success:
-        return result
+        return filepath
     else:
-        raise EmotionAnalysisError(f"模型下载失败: {result}")
+        raise Exception(f"模型下载失败: {filepath}")
 
 
 def validate_email(email: str) -> bool:

@@ -225,12 +225,10 @@ class DatabaseManager:
                     if free_plan:
                         user_plan = UserPlan()
                         user_plan.user_id = admin_user.id
+                        user_plan.plan_id = free_plan.id  # 添加这行来设置plan_id
                         user_plan.plan_name = 'Free'
-                        user_plan.plan_type = 'free'
                         user_plan.quota_total = free_plan.quota_total
                         user_plan.quota_used = 0
-                        user_plan.quota_remaining = free_plan.quota_total
-                        user_plan.reset_period = 'monthly'
                         user_plan.is_active = True
                         db.session.add(user_plan)
                     

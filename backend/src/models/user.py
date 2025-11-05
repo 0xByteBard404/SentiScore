@@ -8,6 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import string
 from src.database.manager import db
+from src.utils.helpers import format_datetime_for_api
 
 class User(db.Model):
     """用户模型"""
@@ -20,8 +21,8 @@ class User(db.Model):
     api_key = db.Column(db.String(64), unique=True, index=True)  # 主API密钥
     status = db.Column(db.String(20), default='active', index=True)
     email_verified = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     last_login_at = db.Column(db.DateTime)
     login_attempts = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime)
@@ -46,7 +47,8 @@ class User(db.Model):
     
     def get_primary_api_key(self):
         """获取用户的主API密钥（第一个有效密钥）"""
-        return self.api_keys.filter_by(is_active=True).first()
+        # 使用查询而不是直接访问关系属性
+        return APIKey.query.filter_by(user_id=self.id, is_active=True).first()
     
     def check_password(self, password: str) -> bool:
         """验证密码"""
@@ -83,11 +85,11 @@ class User(db.Model):
             'email': self.email,
             'status': self.status,
             'email_verified': self.email_verified,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
+            'created_at': format_datetime_for_api(self.created_at),
+            'updated_at': format_datetime_for_api(self.updated_at),
+            'last_login_at': format_datetime_for_api(self.last_login_at),
             'login_attempts': self.login_attempts,
-            'locked_until': self.locked_until.isoformat() if self.locked_until else None,
+            'locked_until': format_datetime_for_api(self.locked_until) if self.locked_until else None,
             'two_factor_enabled': self.two_factor_enabled
         }
     
@@ -99,8 +101,8 @@ class User(db.Model):
             'email': self.email,
             'status': self.status,
             'email_verified': self.email_verified,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None
+            'created_at': format_datetime_for_api(self.created_at),
+            'last_login_at': format_datetime_for_api(self.last_login_at) if self.last_login_at else None
         }
     
     def __repr__(self):
@@ -120,8 +122,8 @@ class APIKey(db.Model):
     quota_total = db.Column(db.Integer, default=1000)  # 总配额
     quota_used = db.Column(db.Integer, default=0)  # 已使用配额
     last_used_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # 添加约束：配额范围检查
     __table_args__ = (
@@ -153,9 +155,9 @@ class APIKey(db.Model):
             'quota_total': self.quota_total,
             'quota_used': self.quota_used,
             'quota_remaining': self.quota_total - self.quota_used,
-            'last_used_at': self.last_used_at.isoformat() if self.last_used_at else None,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'last_used_at': format_datetime_for_api(self.last_used_at) if self.last_used_at else None,
+            'created_at': format_datetime_for_api(self.created_at),
+            'updated_at': format_datetime_for_api(self.updated_at)
         }
     
     def to_detail_dict(self):
@@ -188,8 +190,8 @@ class Admin(db.Model):
     role = db.Column(db.String(20), default='admin', index=True)
     permissions = db.Column(db.JSON, default={})
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     last_login_at = db.Column(db.DateTime)
     status = db.Column(db.String(20), default='active')
     
@@ -210,8 +212,8 @@ class Admin(db.Model):
             'role': self.role,
             'permissions': self.permissions,
             'status': self.status,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None
+            'created_at': format_datetime_for_api(self.created_at),
+            'last_login_at': format_datetime_for_api(self.last_login_at) if self.last_login_at else None
         }
     
     def __repr__(self):
@@ -224,66 +226,45 @@ class UserPlan(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    plan_name = db.Column(db.String(50), nullable=False, index=True)
-    plan_type = db.Column(db.String(20), default='subscription')
-    quota_total = db.Column(db.Integer, nullable=False, default=1000)
-    quota_used = db.Column(db.Integer, default=0)
-    reset_period = db.Column(db.String(20), default='monthly')
-    reset_date = db.Column(db.DateTime)
-    start_date = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    end_date = db.Column(db.DateTime)
+    plan_id = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
+    plan_name = db.Column(db.String(50), nullable=False)
+    quota_total = db.Column(db.Integer, nullable=False)  # 总配额
+    quota_used = db.Column(db.Integer, default=0)  # 已使用配额
     is_active = db.Column(db.Boolean, default=True)
-    auto_renew = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    started_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
-    # 计算字段：剩余额度
-    quota_remaining = db.Column(db.Integer, default=1000)
+    user = db.relationship('User', backref=db.backref('user_plans', lazy='dynamic'))
+    plan = db.relationship('Plan')
     
-    # 约束
-    __table_args__ = (
-        CheckConstraint("plan_type IN ('free', 'subscription', 'pay_per_use')", name='check_plan_type'),
-        CheckConstraint("reset_period IN ('daily', 'weekly', 'monthly', 'yearly')", name='check_reset_period'),
-    )
+    @property
+    def quota_remaining(self):
+        """剩余配额"""
+        return max(0, self.quota_total - self.quota_used)
     
-    user = db.relationship('User', backref=db.backref('plans', lazy='dynamic'))
+    @quota_remaining.setter
+    def quota_remaining(self, value):
+        """设置剩余配额（仅用于序列化，实际值由quota_total和quota_used计算得出）"""
+        pass  # 不执行任何操作，因为这是一个计算属性
     
-    def deduct_quota(self, amount: int = 1, reason: str = "API调用扣减"):
-        """扣减用户配额"""
-        if self.quota_remaining >= amount:
-            self.quota_used += amount
-            self.quota_remaining -= amount
-            
-            # 记录配额扣减日志
-            from src.models.quota import QuotaHistory
-            quota_log = QuotaHistory(
-                user_id=self.user_id,
-                operation="deduct",
-                amount=-amount,
-                balance_before=self.quota_used - amount,
-                balance_after=self.quota_used,
-                description=reason
-            )
-            from src.database.manager import db
-            db.session.add(quota_log)
-            return True
-        return False
+    def to_dict(self):
+        """转换为字典格式"""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'plan_id': self.plan_id,
+            'plan_name': self.plan_name,
+            'quota_total': self.quota_total,
+            'quota_used': self.quota_used,
+            'quota_remaining': self.quota_remaining,
+            'is_active': self.is_active,
+            'started_at': format_datetime_for_api(self.started_at),
+            'expires_at': format_datetime_for_api(self.expires_at) if self.expires_at else None,
+            'created_at': format_datetime_for_api(self.created_at),
+            'updated_at': format_datetime_for_api(self.updated_at)
+        }
     
-    def reset_quota(self):
-        """重置配额"""
-        old_quota_used = self.quota_used
-        self.quota_used = 0
-        self.quota_remaining = self.quota_total
-        
-        # 记录配额重置日志
-        from src.models.quota import QuotaHistory
-        quota_log = QuotaHistory(
-            user_id=self.user_id,
-            operation="reset",
-            amount=self.quota_total,
-            balance_before=old_quota_used,
-            balance_after=0,
-            description="配额周期重置"
-        )
-        from src.database.manager import db
-        db.session.add(quota_log)
+    def __repr__(self):
+        return f'<UserPlan {self.user_id}:{self.plan_name}>'

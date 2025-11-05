@@ -303,11 +303,14 @@ def get_user_statistics(user):
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         
-        # 设置默认时间范围（使用UTC时区）
+        # 设置北京时间时区
+        beijing_tz = timezone(timedelta(hours=8))
+        
+        # 设置默认时间范围（使用北京时间）
         if not end_date:
-            end_date = datetime.now(timezone.utc)
+            end_date = datetime.now(beijing_tz)
         else:
-            end_date = datetime.strptime(end_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').replace(tzinfo=beijing_tz)
             # 将结束日期设置为当天的结束时间（23:59:59）
             end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
             
@@ -323,13 +326,17 @@ def get_user_statistics(user):
             else:
                 start_date = end_date - timedelta(weeks=1)
         else:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=beijing_tz)
             # 将开始日期设置为当天的开始时间（00:00:00）
             start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
         
         # 确保时间范围正确（start_date应该在end_date之前）
         if start_date > end_date:
             start_date, end_date = end_date, start_date
+        
+        # 转换为UTC时间用于数据库查询
+        start_date_utc = start_date.astimezone(timezone.utc)
+        end_date_utc = end_date.astimezone(timezone.utc)
         
         # 检查是否为管理员
         from src.auth.service import AuthService
@@ -343,8 +350,8 @@ def get_user_statistics(user):
             # 管理员查询所有用户的统计信息
             calls_query = APICall.query.filter(
                 and_(
-                    APICall.created_at >= start_date,
-                    APICall.created_at <= end_date,
+                    APICall.created_at >= start_date_utc,
+                    APICall.created_at <= end_date_utc,
                     APICall.quota_deducted == True  # 只统计成功扣减配额的调用
                 )
             )
@@ -356,8 +363,8 @@ def get_user_statistics(user):
             calls_query = APICall.query.filter(
                 and_(
                     APICall.user_id == user.id,
-                    APICall.created_at >= start_date,
-                    APICall.created_at <= end_date,
+                    APICall.created_at >= start_date_utc,
+                    APICall.created_at <= end_date_utc,
                     APICall.quota_deducted == True  # 只统计成功扣减配额的调用
                 )
             )
@@ -379,7 +386,7 @@ def get_user_statistics(user):
         # 按日期统计调用次数（只统计成功扣减配额的调用）
         daily_calls = []
         
-        # 生成完整日期范围（包含所有日期）
+        # 生成完整日期范围（包含所有日期，使用北京时间）
         date_range = []
         current_date = start_date.date()
         end_date_only = end_date.date()
@@ -389,15 +396,15 @@ def get_user_statistics(user):
             date_range.append(current_date.strftime('%Y-%m-%d'))
             current_date += timedelta(days=1)
         
-        # 查询数据库中的统计数据
+        # 查询数据库中的统计数据（使用UTC时间进行分组，但转换为北京时间显示）
         if period in ['day', 'week']:
             date_format = '%Y-%m-%d'
-            # 使用UTC时间进行分组
-            date_group = func.date(APICall.created_at)
+            # 使用UTC时间进行分组，但转换为北京时间
+            date_group = func.date(func.datetime(APICall.created_at, '+8 hours'))
         else:
             date_format = '%Y-%m'
-            # 使用UTC时间进行分组
-            date_group = func.strftime('%Y-%m', APICall.created_at)
+            # 使用UTC时间进行分组，但转换为北京时间
+            date_group = func.strftime('%Y-%m', func.datetime(APICall.created_at, '+8 hours'))
             
         daily_stats = calls_query.with_entities(
             date_group.label('date'),
@@ -429,13 +436,12 @@ def get_user_statistics(user):
         # 添加调试信息
         logger.info(f"用户 {user.id} 统计数据:")
         logger.info(f"  时间范围: {start_date} 到 {end_date}")
+        logger.info(f"  UTC时间范围: {start_date_utc} 到 {end_date_utc}")
         logger.info(f"  总调用次数: {total_calls}")
         logger.info(f"  成功调用次数: {successful_calls}")
         logger.info(f"  失败调用次数: {failed_calls}")
         logger.info(f"  每日调用统计: {daily_calls}")
         logger.info(f"  端点使用情况: {endpoint_usage}")
-        
-
         
         response_data = {
             'data': {
@@ -494,6 +500,7 @@ def get_api_call_history(user):
         from src.models.api import APICall
         from flask import request
         from sqlalchemy import desc
+        from src.utils.helpers import format_datetime_for_api
         
         # 获取分页参数
         page = int(request.args.get('page', 1))
@@ -543,7 +550,7 @@ def get_api_call_history(user):
                 'response_time_ms': call.response_time_ms,
                 'ip_address': call.ip_address,
                 'user_agent': call.user_agent,
-                'created_at': call.created_at.isoformat() if call.created_at else None
+                'created_at': format_datetime_for_api(call.created_at)
             }
             calls_data.append(call_dict)
         
@@ -571,6 +578,7 @@ def get_order_history(user):
         from src.models.api import Order
         from flask import request
         from sqlalchemy import desc
+        from src.utils.helpers import format_datetime_for_api
         
         # 获取分页参数
         page = int(request.args.get('page', 1))
@@ -620,9 +628,9 @@ def get_order_history(user):
                 'plan_name': order.plan_name,
                 'amount': float(order.amount),
                 'status': order.status,
-                'created_at': order.created_at.isoformat() if order.created_at else None,
-                'paid_at': order.paid_at.isoformat() if order.paid_at else None,
-                'refunded_at': order.refunded_at.isoformat() if order.refunded_at else None
+                'created_at': format_datetime_for_api(order.created_at),
+                'paid_at': format_datetime_for_api(order.paid_at) if order.paid_at else None,
+                'refunded_at': format_datetime_for_api(order.refunded_at) if order.refunded_at else None
             }
             orders_data.append(order_dict)
         

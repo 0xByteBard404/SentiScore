@@ -36,3 +36,34 @@ export const formatDateOnly = (date: string | Date): string => {
   
   return `${year}-${month}-${day}`
 }
+
+/**
+ * 获取北京时间的今日日期字符串 (YYYY-MM-DD)
+ * @returns 今日日期字符串
+ */
+export const getBeijingToday = (): string => {
+  // 创建当前时间的Date对象
+  const now = new Date()
+  
+  // 转换为北京时间 (UTC+8)
+  const beijingTime = new Date(now.getTime() + (8 * 60 * 60 * 1000))
+  
+  const year = beijingTime.getUTCFullYear()
+  const month = String(beijingTime.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(beijingTime.getUTCDate()).padStart(2, '0')
+  
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * 将UTC时间转换为北京时间
+ * @param date UTC时间字符串或Date对象
+ * @returns 北京时间的Date对象
+ */
+export const utcToBeijing = (date: string | Date): Date => {
+  const d = typeof date === 'string' ? new Date(date) : date
+  if (isNaN(d.getTime())) return d
+  
+  // 转换为北京时间 (UTC+8)
+  return new Date(d.getTime() + (8 * 60 * 60 * 1000))
+}

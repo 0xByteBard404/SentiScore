@@ -94,10 +94,10 @@ class AuthService:
             if free_plan:
                 user_plan = UserPlan()
                 user_plan.user_id = user.id
+                user_plan.plan_id = free_plan.id  # 添加这行来设置plan_id
                 user_plan.plan_name = free_plan.name
                 user_plan.quota_total = free_plan.quota_total
                 user_plan.quota_used = 0
-                user_plan.quota_remaining = free_plan.quota_total
                 db.session.add(user_plan)
             
             db.session.commit()
@@ -599,22 +599,19 @@ class AuthService:
         """扣减用户配额"""
         try:
             user_plan = self.get_user_plan(user)
-            if not user_plan:
-                return False
-            
-            # 确保只传递 amount 参数
-            if hasattr(user_plan, 'deduct_quota') and callable(user_plan.deduct_quota):
-                user_plan.deduct_quota(amount)
-            else:
-                # 回退逻辑：手动扣减
-                if user_plan.quota_remaining >= amount:
+            if user_plan:
+                if user_plan.quota_total - user_plan.quota_used >= amount:
                     user_plan.quota_used += amount
-                    user_plan.quota_remaining -= amount
+                    success = True
                 else:
-                    return False
+                    success = False
+            else:
+                success = False
 
-            db.session.commit()
-            return True
+            if success:
+                db.session.commit()
+                return True
+            return False
             
         except Exception as e:
             print(f"扣减用户配额失败: {e}")
