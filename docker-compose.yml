@@ -1,7 +1,6 @@
 # 仅后端服务的Docker Compose配置
 # 注意：此配置文件仅用于运行后端服务
 # 如需同时部署前端和后端，请使用 docker-compose.full.yml
-version: '3.8'
 
 services:
   sentiscore:
@@ -23,8 +22,12 @@ services:
       - HANLP_MODEL_DIR=/app/models/hanlp_models
       # 多源下载配置 - 使用国内外镜像
       - MODEL_DOWNLOAD_STRATEGY=cn_priority
+      - MODEL_DOWNLOAD_TIMEOUT=300
+      - MODEL_DOWNLOAD_RETRIES=5
       - HF_ENDPOINT=https://hf-mirror.com
       - HF_MIRROR=https://hf-mirror.com
+      - HF_HUB_ETAG_TIMEOUT=300
+      - HF_HUB_DOWNLOAD_TIMEOUT=300
     restart: unless-stopped
     user: "1000:1000"  # 使用非root用户运行
 

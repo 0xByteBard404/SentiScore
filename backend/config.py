@@ -55,14 +55,15 @@ class Config:
     }
 
     # 下载策略配置
-    MODEL_DOWNLOAD_STRATEGY = os.getenv('MODEL_DOWNLOAD_STRATEGY', 'auto')  # 'auto', 'cn_priority', 'global_priority'
-    MODEL_DOWNLOAD_TIMEOUT = int(os.getenv('MODEL_DOWNLOAD_TIMEOUT', '60'))  # 下载超时时间(秒)
+    MODEL_DOWNLOAD_STRATEGY = os.getenv('MODEL_DOWNLOAD_STRATEGY', 'cn_priority')  # 'auto', 'cn_priority', 'global_priority'
+    MODEL_DOWNLOAD_TIMEOUT = int(os.getenv('MODEL_DOWNLOAD_TIMEOUT', '300'))  # 下载超时时间(秒)，增加到300秒（5分钟）
+    MODEL_DOWNLOAD_RETRIES = int(os.getenv('MODEL_DOWNLOAD_RETRIES', '5'))  # 下载重试次数
 
     # Hugging Face配置
     HF_CACHE_DIR = os.getenv('HF_HOME', os.path.join(models_path, 'huggingface_cache'))
     HF_CACHE_DIR = os.path.normpath(HF_CACHE_DIR)
-    HF_ENDPOINT = os.getenv('HF_ENDPOINT', 'https://huggingface.co')
     # 使用国内镜像加速Hugging Face下载
+    HF_ENDPOINT = os.getenv('HF_ENDPOINT', 'https://hf-mirror.com')  # 默认使用国内镜像
     HF_MIRROR = os.getenv('HF_MIRROR', 'https://hf-mirror.com')  # 或使用 'https://huggingface.co' (官方)
 
     # API配置

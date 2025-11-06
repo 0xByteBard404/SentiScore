@@ -18,12 +18,22 @@ from flask_jwt_extended import JWTManager
 # 获取项目根目录
 project_root = os.path.dirname(os.path.abspath(__file__))
 models_path = os.path.join(project_root, '..', 'models')
+# 规范化路径，移除 .. 部分
+models_path = os.path.normpath(models_path)
+
+# 设置ModelScope缓存目录
 MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', os.path.join(models_path, 'modelscope_cache'))
+# 规范化ModelScope缓存目录路径
+MODELSCOPE_CACHE_DIR = os.path.normpath(MODELSCOPE_CACHE_DIR)
 os.environ['MODELSCOPE_CACHE_HOME'] = MODELSCOPE_CACHE_DIR
 os.environ['MODELSCOPE_CACHE_DIR'] = MODELSCOPE_CACHE_DIR
 
 # 本地配置导入
 from config import config
+
+# 设置HanLP环境变量（在导入任何使用HanLP的模块之前）
+if hasattr(config, 'HANLP_MODEL_DIR') and config.HANLP_MODEL_DIR:
+    os.environ['HANLP_HOME'] = config.HANLP_MODEL_DIR
 
 # 工具函数
 from src.utils.helpers import setup_logging, EmotionAnalysisError
@@ -49,7 +59,7 @@ except ImportError:
 
 # 配置Hugging Face环境
 os.environ['HF_HOME'] = config.HF_CACHE_DIR
-os.environ['HF_ENDPOINT'] = config.HF_MIRROR  # 使用国内镜像
+os.environ['HF_ENDPOINT'] = config.HF_ENDPOINT  # 使用国内镜像
 os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'  # 禁用进度条，避免影响日志
 
 # 创建Hugging Face缓存目录
@@ -59,6 +69,9 @@ if not os.path.exists(config.HF_CACHE_DIR):
 # 验证配置完整性
 logger.info("配置验证完成")
 logger.info(f"ModelScope缓存目录: {MODELSCOPE_CACHE_DIR}")
+logger.info(f"HanLP模型目录: {config.HANLP_MODEL_DIR}")
+logger.info(f"cemotion模型缓存目录: {config.MODEL_CACHE_DIR}")
+logger.info(f"Hugging Face缓存目录: {config.HF_CACHE_DIR}")
 
 app = Flask(__name__)
 # 配置JSON编码器，确保中文字符不会被转义

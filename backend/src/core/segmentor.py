@@ -2,6 +2,16 @@ import logging
 import re
 import os
 from typing import List, Union, Tuple, Optional, Any
+
+# 在导入HanLP之前设置环境变量
+from config import config
+if hasattr(config, 'HANLP_MODEL_DIR') and config.HANLP_MODEL_DIR:
+    # 设置HanLP根目录环境变量
+    os.environ['HANLP_HOME'] = config.HANLP_MODEL_DIR
+    # 确保目录存在
+    if not os.path.exists(config.HANLP_MODEL_DIR):
+        os.makedirs(config.HANLP_MODEL_DIR, exist_ok=True)
+
 # 移除LTP导入，替换为HanLP
 import hanlp
 
@@ -12,15 +22,6 @@ try:
 except ImportError:
     # 在开发环境中，模块路径是 backend.src.utils.helpers
     from backend.src.utils.helpers import APIError
-
-# 设置HanLP模型目录，确保模型下载到指定的持久化目录
-from config import config
-if hasattr(config, 'HANLP_MODEL_DIR') and config.HANLP_MODEL_DIR:
-    # 设置HanLP根目录环境变量
-    os.environ['HANLP_HOME'] = config.HANLP_MODEL_DIR
-    # 确保目录存在
-    if not os.path.exists(config.HANLP_MODEL_DIR):
-        os.makedirs(config.HANLP_MODEL_DIR, exist_ok=True)
 
 logger = logging.getLogger('SentiScore')
 
