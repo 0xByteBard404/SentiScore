@@ -6,11 +6,21 @@
 import os
 import logging
 from typing import Union, List, Tuple
-from cemotion import Cemotion as CemotionBase
 import time
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+# 在导入cemotion之前设置HF_HOME环境变量
+from config import config
+# 确保HF_HOME环境变量在导入任何transformers相关模块之前设置
+if hasattr(config, 'HF_CACHE_DIR') and config.HF_CACHE_DIR:
+    os.environ['HF_HOME'] = config.HF_CACHE_DIR
+if hasattr(config, 'HF_ENDPOINT') and config.HF_ENDPOINT:
+    os.environ['HF_ENDPOINT'] = config.HF_ENDPOINT
+
+# 在设置环境变量后再导入cemotion
+from cemotion import Cemotion as CemotionBase
 
 logger = logging.getLogger('SentiScore')
 

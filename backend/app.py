@@ -1,7 +1,19 @@
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 """
-主应用文件
+SentiScore 后端服务主入口
 """
+
+import os
+import sys
+import logging
+from logging.handlers import RotatingFileHandler
+import sqlite3
+
+# 在导入任何其他模块之前设置HF_HOME环境变量
+from config import config
+os.environ['HF_HOME'] = config.HF_CACHE_DIR
+os.environ['HF_ENDPOINT'] = config.HF_ENDPOINT
+
 # 标准库
 import os
 import sys

@@ -8,6 +8,19 @@ import os
 import sys
 import logging
 import time  # 新增time模块用于重试等待
+
+# 在导入config之前设置环境变量
+# 获取项目根目录
+project_root = os.path.dirname(os.path.abspath(__file__))
+# 设置模型存储路径为项目根目录下的models文件夹
+models_path = os.getenv('MODELS_PATH', os.path.join(os.path.dirname(project_root), 'models'))
+# 规范化路径，移除 .. 
+models_path = os.path.normpath(models_path)
+
+# 提前设置HF_HOME环境变量
+HF_CACHE_DIR_DEFAULT = os.getenv('HF_HOME', os.path.join(models_path, 'huggingface_cache'))
+os.environ.setdefault('HF_HOME', HF_CACHE_DIR_DEFAULT)
+
 from config import config
 
 # 设置日志
