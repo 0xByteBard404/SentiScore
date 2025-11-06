@@ -1,3 +1,7 @@
+# 仅后端服务的Docker Compose配置
+# 注意：此配置文件仅用于运行后端服务
+# 如需同时部署前端和后端，请使用 docker-compose.full.yml
+
 services:
   sentiscore:
     build: .
@@ -7,7 +11,7 @@ services:
       # 持久化模型缓存，避免重复下载
       - ./models/cemotion_cache:/app/.cemotion_cache
       - ./models/modelscope_cache:/app/.cache/modelscope
-      - ./models/huggingface_cache:/app/.cache/huggingface
+      - ./models/hanlp_models:/app/models/hanlp_models
       # 持久化数据库文件 - 使用 Docker Volume
       - SentiScore_sqlite_data:/app/instance
     environment:
@@ -26,9 +30,9 @@ services:
       - HF_HUB_DOWNLOAD_TIMEOUT=300
       # ModelScope配置
       - MODELSCOPE_CACHE_HOME=/app/.cache/modelscope
-      # Hugging Face离线模式配置
-      - HF_HUB_OFFLINE=1
-      - TRANSFORMERS_OFFLINE=1
+      # Hugging Face在线模式配置
+      - HF_HUB_OFFLINE=0
+      - TRANSFORMERS_OFFLINE=0
       - HF_HOME=/app/.cache/huggingface
     restart: unless-stopped
     user: "1000:1000"  # 使用非root用户运行

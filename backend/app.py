@@ -39,8 +39,8 @@ HF_CACHE_DIR = os.path.normpath(HF_CACHE_DIR)
 os.environ['HF_HOME'] = HF_CACHE_DIR
 os.environ['HF_ENDPOINT'] = os.getenv('HF_ENDPOINT', 'https://hf-mirror.com')
 os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
-os.environ['HF_HUB_OFFLINE'] = '1'  # 启用离线模式
-os.environ['TRANSFORMERS_OFFLINE'] = '1'  # 启用transformers离线模式
+os.environ['HF_HUB_OFFLINE'] = '0'  # 启用在线模式
+os.environ['TRANSFORMERS_OFFLINE'] = '0'  # 启用transformers在线模式
 
 # 本地配置导入
 from config import config

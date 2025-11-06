@@ -32,13 +32,12 @@ COPY backend/src/ src/
 RUN adduser --disabled-password --gecos '' appuser
 
 # 创建缓存目录和数据库目录
-RUN mkdir -p /app/.cemotion_cache /app/models/hanlp_models /app/models/modelscope_cache /app/instance
+RUN mkdir -p /app/.cache/huggingface /app/.cemotion_cache /app/models/hanlp_models /app/models/modelscope_cache /app/instance
 # 创建空的数据库文件并设置权限
 RUN touch /app/instance/sentiscore.db
+# 设置所有目录的权限，确保appuser可以读写
 RUN chown -R appuser:appuser /app
-
-# 设置HanLP模型目录的权限，确保appuser可以写入
-RUN chmod -R 777 /app/models/hanlp_models
+RUN chmod -R 777 /app
 
 # 设置环境变量指向持久化缓存目录
 ENV MODEL_CACHE_DIR=/app/.cemotion_cache
@@ -48,12 +47,10 @@ ENV MODELSCOPE_CACHE_DIR=/app/models/modelscope_cache
 ENV HF_HOME=/app/.cache/huggingface
 ENV PYTHONPATH=/app
 
-# 设置Hugging Face离线模式环境变量
-ENV HF_HUB_OFFLINE=1
-ENV TRANSFORMERS_OFFLINE=1
-
-# 清理可能存在的损坏缓存
-RUN rm -rf /root/.cache/huggingface
+# 设置Hugging Face镜像站点环境变量
+ENV HF_HUB_OFFLINE=0
+ENV TRANSFORMERS_OFFLINE=0
+ENV HF_ENDPOINT=https://hf-mirror.com
 
 # 设置环境变量
 ENV FLASK_ENV=production

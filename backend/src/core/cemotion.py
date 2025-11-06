@@ -50,9 +50,9 @@ class Cemotion:
         
         try:
             # 在初始化模型之前设置环境变量
-            # 设置Hugging Face离线模式
-            os.environ['HF_HUB_OFFLINE'] = '1'
-            os.environ['TRANSFORMERS_OFFLINE'] = '1'
+            # 设置Hugging Face在线模式
+            os.environ['HF_HUB_OFFLINE'] = '0'
+            os.environ['TRANSFORMERS_OFFLINE'] = '0'
             
             # 应用镜像配置 - 确保使用HF_ENDPOINT而不是HF_MIRROR
             if self.config and hasattr(self.config, 'HF_ENDPOINT'):

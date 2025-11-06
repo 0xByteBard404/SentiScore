@@ -31,9 +31,9 @@ services:
       - MODELSCOPE_CACHE_DIR=/app/models/modelscope_cache
       # 数据库配置
       - DATABASE_URL=sqlite:////app/instance/sentiscore.db
-      # Hugging Face离线模式配置
-      - HF_HUB_OFFLINE=1
-      - TRANSFORMERS_OFFLINE=1
+      # Hugging Face在线模式配置
+      - HF_HUB_OFFLINE=0
+      - TRANSFORMERS_OFFLINE=0
       - HF_HOME=/app/.cache/huggingface
     restart: unless-stopped
     user: "appuser:appuser"  # 使用非root用户运行

@@ -16,9 +16,9 @@ os.environ.setdefault('HF_ENDPOINT', HF_ENDPOINT_VALUE)
 os.environ.setdefault('HF_HOME', HF_CACHE_DIR_DEFAULT)
 os.environ.setdefault('HF_HUB_DISABLE_PROGRESS_BARS', 'true')
 os.environ.setdefault('HF_HUB_ETAG_TIMEOUT', '10')
-# 设置离线模式环境变量
-os.environ.setdefault('HF_HUB_OFFLINE', '1')
-os.environ.setdefault('TRANSFORMERS_OFFLINE', '1')
+# 暂时禁用离线模式，允许从镜像站点下载模型
+os.environ.setdefault('HF_HUB_OFFLINE', '0')
+os.environ.setdefault('TRANSFORMERS_OFFLINE', '0')
 
 # 获取项目根目录
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
