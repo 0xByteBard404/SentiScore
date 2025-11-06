@@ -17,11 +17,19 @@ models_path = os.getenv('MODELS_PATH', os.path.join(os.path.dirname(project_root
 # 规范化路径，移除 .. 
 models_path = os.path.normpath(models_path)
 
-# 提前设置HF_HOME环境变量
+# 提前设置HF_HOME环境变量，确保在任何transformers相关库导入之前设置
 HF_CACHE_DIR_DEFAULT = os.getenv('HF_HOME', os.path.join(models_path, 'huggingface_cache'))
 os.environ.setdefault('HF_HOME', HF_CACHE_DIR_DEFAULT)
 
+# 设置HF_ENDPOINT环境变量
+HF_ENDPOINT_VALUE = os.getenv('HF_ENDPOINT', 'https://hf-mirror.com')
+os.environ.setdefault('HF_ENDPOINT', HF_ENDPOINT_VALUE)
+
 from config import config
+
+# 再次确保环境变量设置正确
+os.environ['HF_HOME'] = config.HF_CACHE_DIR
+os.environ['HF_ENDPOINT'] = config.HF_ENDPOINT
 
 # 设置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
