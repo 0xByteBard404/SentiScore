@@ -45,7 +45,8 @@ ENV MODEL_CACHE_DIR=/app/.cemotion_cache
 ENV HANLP_MODEL_DIR=/app/models/hanlp_models
 ENV MODELSCOPE_CACHE_HOME=/app/models/modelscope_cache
 ENV MODELSCOPE_CACHE_DIR=/app/models/modelscope_cache
-ENV HF_HOME=/app/.cache/huggingface  # 修改为正确的huggingface缓存路径
+# 修改为正确的huggingface缓存路径
+ENV HF_HOME=/app/.cache/huggingface
 ENV PYTHONPATH=/app
 
 # 清理可能存在的损坏缓存
