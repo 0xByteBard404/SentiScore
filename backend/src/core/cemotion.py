@@ -6,36 +6,11 @@
 import os
 import logging
 from typing import Union, List, Tuple
+from cemotion import Cemotion as CemotionBase
 import time
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-
-# 在导入任何相关库之前设置HF_HOME环境变量
-# 这需要在文件的最顶部，甚至在其他导入之前设置
-# 获取项目根目录
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# 设置模型存储路径为项目根目录下的models文件夹
-models_path = os.getenv('MODELS_PATH', os.path.join(project_root, 'models'))
-# 规范化路径，移除 .. 
-models_path = os.path.normpath(models_path)
-# 设置HF_HOME环境变量
-HF_CACHE_DIR_DEFAULT = os.getenv('HF_HOME', os.path.join(models_path, 'huggingface_cache'))
-os.environ.setdefault('HF_HOME', HF_CACHE_DIR_DEFAULT)
-
-# 确保HF_ENDPOINT环境变量也设置正确
-HF_ENDPOINT_VALUE = os.getenv('HF_ENDPOINT', 'https://hf-mirror.com')
-os.environ.setdefault('HF_ENDPOINT', HF_ENDPOINT_VALUE)
-
-from config import config
-# 再次确保环境变量设置正确
-if hasattr(config, 'HF_CACHE_DIR') and config.HF_CACHE_DIR:
-    os.environ['HF_HOME'] = config.HF_CACHE_DIR
-if hasattr(config, 'HF_ENDPOINT') and config.HF_ENDPOINT:
-    os.environ['HF_ENDPOINT'] = config.HF_ENDPOINT
-
-# 在设置环境变量后再导入cemotion
-from cemotion import Cemotion as CemotionBase
 
 logger = logging.getLogger('SentiScore')
 
@@ -74,6 +49,27 @@ class Cemotion:
         self.config = config
         
         try:
+            # 在初始化模型之前设置环境变量
+            # 设置Hugging Face离线模式
+            os.environ['HF_HUB_OFFLINE'] = '1'
+            os.environ['TRANSFORMERS_OFFLINE'] = '1'
+            
+            # 应用镜像配置 - 确保使用HF_ENDPOINT而不是HF_MIRROR
+            if self.config and hasattr(self.config, 'HF_ENDPOINT'):
+                os.environ['HF_ENDPOINT'] = self.config.HF_ENDPOINT
+            if self.config and hasattr(self.config, 'HF_MIRROR'):
+                # 为了兼容性也设置HF_MIRROR
+                os.environ['HF_MIRROR'] = self.config.HF_MIRROR
+            
+            # 配置下载超时和重试机制
+            if self.config and hasattr(self.config, 'MODEL_DOWNLOAD_TIMEOUT'):
+                os.environ['HF_HUB_ETAG_TIMEOUT'] = str(self.config.MODEL_DOWNLOAD_TIMEOUT)
+                os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = str(self.config.MODEL_DOWNLOAD_TIMEOUT)
+            
+            # 设置HF_HOME环境变量
+            if self.config and hasattr(self.config, 'HF_CACHE_DIR'):
+                os.environ['HF_HOME'] = self.config.HF_CACHE_DIR
+            
             # 初始化Cemotion模型
             if self.config and hasattr(self.config, 'MODEL_CACHE_DIR') and self.config.MODEL_CACHE_DIR:
                 model_cache_dir = self.config.MODEL_CACHE_DIR
@@ -87,18 +83,6 @@ class Cemotion:
                 # 切换到模型缓存目录
                 os.chdir(model_cache_dir)
                 
-                # 应用镜像配置 - 确保使用HF_ENDPOINT而不是HF_MIRROR
-                if self.config and hasattr(self.config, 'HF_ENDPOINT'):
-                    os.environ['HF_ENDPOINT'] = self.config.HF_ENDPOINT
-                if self.config and hasattr(self.config, 'HF_MIRROR'):
-                    # 为了兼容性也设置HF_MIRROR
-                    os.environ['HF_MIRROR'] = self.config.HF_MIRROR
-                
-                # 配置下载超时和重试机制
-                if self.config and hasattr(self.config, 'MODEL_DOWNLOAD_TIMEOUT'):
-                    os.environ['HF_HUB_ETAG_TIMEOUT'] = str(self.config.MODEL_DOWNLOAD_TIMEOUT)
-                    os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = str(self.config.MODEL_DOWNLOAD_TIMEOUT)
-                
                 # 在指定目录初始化模型
                 self.model = CemotionBase()
                 logger.info(f"情感分析模型加载成功，使用缓存目录: {model_cache_dir}")
@@ -107,18 +91,6 @@ class Cemotion:
                 os.chdir(original_cwd)
             else:
                 # 使用默认路径
-                # 应用镜像配置 - 确保使用HF_ENDPOINT而不是HF_MIRROR
-                if self.config and hasattr(self.config, 'HF_ENDPOINT'):
-                    os.environ['HF_ENDPOINT'] = self.config.HF_ENDPOINT
-                if self.config and hasattr(self.config, 'HF_MIRROR'):
-                    # 为了兼容性也设置HF_MIRROR
-                    os.environ['HF_MIRROR'] = self.config.HF_MIRROR
-                
-                # 配置下载超时和重试机制
-                if self.config and hasattr(self.config, 'MODEL_DOWNLOAD_TIMEOUT'):
-                    os.environ['HF_HUB_ETAG_TIMEOUT'] = str(self.config.MODEL_DOWNLOAD_TIMEOUT)
-                    os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = str(self.config.MODEL_DOWNLOAD_TIMEOUT)
-                
                 self.model = CemotionBase()
                 logger.info("情感分析模型加载成功（使用默认模型）")
         except Exception as e:

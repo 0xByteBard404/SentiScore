@@ -1,35 +1,7 @@
-#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-SentiScore 后端服务主入口
+主应用文件
 """
-
-import os
-import sys
-import logging
-from logging.handlers import RotatingFileHandler
-import sqlite3
-
-# 在导入任何其他模块之前设置HF_HOME环境变量
-# 获取项目根目录
-project_root = os.path.dirname(os.path.abspath(__file__))
-# 设置模型存储路径为项目根目录下的models文件夹
-models_path = os.getenv('MODELS_PATH', os.path.join(os.path.dirname(project_root), 'models'))
-# 规范化路径，移除 .. 
-models_path = os.path.normpath(models_path)
-
-# 设置HF_HOME环境变量，确保在任何transformers相关库导入之前设置
-HF_CACHE_DIR_DEFAULT = os.getenv('HF_HOME', os.path.join(models_path, 'huggingface_cache'))
-os.environ.setdefault('HF_HOME', HF_CACHE_DIR_DEFAULT)
-
-# 设置HF_ENDPOINT环境变量
-HF_ENDPOINT_VALUE = os.getenv('HF_ENDPOINT', 'https://hf-mirror.com')
-os.environ.setdefault('HF_ENDPOINT', HF_ENDPOINT_VALUE)
-
-from config import config
-# 再次确保环境变量设置正确
-os.environ['HF_HOME'] = config.HF_CACHE_DIR
-os.environ['HF_ENDPOINT'] = config.HF_ENDPOINT
-
 # 标准库
 import os
 import sys
@@ -43,6 +15,13 @@ from flask import Flask, jsonify
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 
+# 获取项目根目录
+project_root = os.path.dirname(os.path.abspath(__file__))
+models_path = os.path.join(project_root, '..', 'models')
+# 规范化路径，移除 .. 部分
+models_path = os.path.normpath(models_path)
+
+# 提前设置所有环境变量，确保在任何相关库导入之前生效
 # 设置ModelScope缓存目录
 MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', os.path.join(models_path, 'modelscope_cache'))
 # 规范化ModelScope缓存目录路径
@@ -53,6 +32,15 @@ os.environ['MODELSCOPE_CACHE_DIR'] = MODELSCOPE_CACHE_DIR
 # 设置HanLP环境变量（提前设置，确保在hanlp导入前生效）
 HANLP_MODEL_DIR = os.getenv('HANLP_MODEL_DIR', os.path.join(models_path, 'hanlp_models'))
 os.environ['HANLP_HOME'] = HANLP_MODEL_DIR
+
+# 设置Hugging Face环境变量（提前设置，确保在transformers导入前生效）
+HF_CACHE_DIR = os.getenv('HF_HOME', os.path.join(models_path, 'huggingface_cache'))
+HF_CACHE_DIR = os.path.normpath(HF_CACHE_DIR)
+os.environ['HF_HOME'] = HF_CACHE_DIR
+os.environ['HF_ENDPOINT'] = os.getenv('HF_ENDPOINT', 'https://hf-mirror.com')
+os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
+os.environ['HF_HUB_OFFLINE'] = '1'  # 启用离线模式
+os.environ['TRANSFORMERS_OFFLINE'] = '1'  # 启用transformers离线模式
 
 # 本地配置导入
 from config import config
@@ -82,11 +70,6 @@ try:
     transformers_logging.set_verbosity_error()
 except ImportError:
     pass
-
-# 配置Hugging Face环境
-os.environ['HF_HOME'] = config.HF_CACHE_DIR
-os.environ['HF_ENDPOINT'] = config.HF_ENDPOINT  # 使用国内镜像
-os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'  # 禁用进度条，避免影响日志
 
 # 创建Hugging Face缓存目录
 if not os.path.exists(config.HF_CACHE_DIR):
@@ -145,8 +128,7 @@ def preload_models_if_needed():
             result = subprocess.run([sys.executable, 'preload_models.py'], 
                                   cwd=project_root,
                                   capture_output=True, 
-                                  text=True,
-                                  env={**os.environ, 'HF_HOME': config.HF_CACHE_DIR})  # 确保HF_HOME环境变量正确传递
+                                  text=True)
             if result.returncode == 0:
                 logger.info("模型预加载完成")
             else:
