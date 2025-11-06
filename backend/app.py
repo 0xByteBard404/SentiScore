@@ -22,6 +22,10 @@ MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', os.path.join(models_pat
 os.environ['MODELSCOPE_CACHE_HOME'] = MODELSCOPE_CACHE_DIR
 os.environ['MODELSCOPE_CACHE_DIR'] = MODELSCOPE_CACHE_DIR
 
+# 设置HanLP环境变量（提前设置，确保在hanlp导入前生效）
+HANLP_MODEL_DIR = os.getenv('HANLP_MODEL_DIR', os.path.join(models_path, 'hanlp_models'))
+os.environ['HANLP_HOME'] = HANLP_MODEL_DIR
+
 # 本地配置导入
 from config import config
 
@@ -56,9 +60,21 @@ os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'  # 禁用进度条，避免影�
 if not os.path.exists(config.HF_CACHE_DIR):
     os.makedirs(config.HF_CACHE_DIR, exist_ok=True)
 
+# 创建HanLP模型目录
+if not os.path.exists(HANLP_MODEL_DIR):
+    os.makedirs(HANLP_MODEL_DIR, exist_ok=True)
+
+# 设置HanLP模型目录的权限，确保appuser可以写入
+try:
+    import stat
+    os.chmod(HANLP_MODEL_DIR, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+except Exception as e:
+    logger.warning(f"设置HanLP模型目录权限失败: {e}")
+
 # 验证配置完整性
 logger.info("配置验证完成")
 logger.info(f"ModelScope缓存目录: {MODELSCOPE_CACHE_DIR}")
+logger.info(f"HanLP模型目录: {HANLP_MODEL_DIR}")
 
 app = Flask(__name__)
 # 配置JSON编码器，确保中文字符不会被转义

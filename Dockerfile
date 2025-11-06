@@ -35,6 +35,9 @@ RUN mkdir -p /app/.cemotion_cache /app/models/hanlp_models /app/instance
 RUN touch /app/instance/sentiscore.db
 RUN chown -R appuser:appuser /app
 
+# 设置HanLP模型目录的权限，确保appuser可以写入
+RUN chmod -R 777 /app/models/hanlp_models
+
 # 设置环境变量指向持久化缓存目录
 ENV MODEL_CACHE_DIR=/app/.cemotion_cache
 ENV HANLP_MODEL_DIR=/app/models/hanlp_models

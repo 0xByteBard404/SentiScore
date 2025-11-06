@@ -74,7 +74,7 @@ try {
     Write-Host "服务构建并启动成功 ✓" -ForegroundColor Green
     Write-Host ""
     Write-Host "=== 部署完成 ===" -ForegroundColor Green
-    Write-Host "前端管理后台: http://localhost" -ForegroundColor Cyan
+    Write-Host "前端管理后台: http://localhost:8888" -ForegroundColor Cyan
     Write-Host "后端API服务: http://localhost:5000" -ForegroundColor Cyan
     Write-Host "==================" -ForegroundColor Green
 } catch {
