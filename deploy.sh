@@ -30,6 +30,10 @@ if [ ! -f "docker-compose.full.yml" ]; then
     exit 1
 fi
 
+# 确保模型目录存在并设置正确的权限
+mkdir -p models/hanlp_models
+chmod 777 models/hanlp_models
+
 # 停止正在运行的服务
 echo "正在检查是否有正在运行的服务..."
 if docker-compose -f docker-compose.full.yml ps | grep -q "Up"; then
