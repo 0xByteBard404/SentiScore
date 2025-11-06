@@ -7,6 +7,7 @@
 import os
 import sys
 import logging
+import time  # 新增time模块用于重试等待
 from config import config
 
 # 设置日志
@@ -31,11 +32,18 @@ def preload_huggingface_models():
         from transformers import BertTokenizer, BertForSequenceClassification
         
         logger.info("正在下载/加载 bert-base-chinese tokenizer...")
-        tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
+        tokenizer = BertTokenizer.from_pretrained(
+            'bert-base-chinese',
+            timeout=600  # 增加超时时间
+        )
         logger.info("bert-base-chinese tokenizer 加载完成")
         
         logger.info("正在下载/加载 bert-base-chinese 模型...")
-        model = BertForSequenceClassification.from_pretrained('bert-base-chinese', num_labels=1)
+        model = BertForSequenceClassification.from_pretrained(
+            'bert-base-chinese', 
+            num_labels=1,
+            timeout=600  # 增加超时时间
+        )
         logger.info("bert-base-chinese 模型加载完成")
         
         logger.info("Hugging Face模型预加载完成")
@@ -84,11 +92,26 @@ def main():
     """主函数"""
     logger.info("=== 模型预加载脚本开始 ===")
     
-    # 预加载Hugging Face模型
-    hf_success = preload_huggingface_models()
+    # 预加载Hugging Face模型（带重试机制）
+    max_retries = 3
+    hf_success = False
+    for attempt in range(max_retries):
+        logger.info(f"尝试预加载Hugging Face模型 (第{attempt+1}次)")
+        hf_success = preload_huggingface_models()
+        if hf_success:
+            break
+        logger.warning(f"Hugging Face模型预加载失败，将在5秒后重试...")
+        time.sleep(5)
     
-    # 预加载cemotion模型
-    cemotion_success = preload_cemotion_model()
+    # 预加载cemotion模型（带重试机制）
+    cemotion_success = False
+    for attempt in range(max_retries):
+        logger.info(f"尝试预加载cemotion模型 (第{attempt+1}次)")
+        cemotion_success = preload_cemotion_model()
+        if cemotion_success:
+            break
+        logger.warning(f"cemotion模型预加载失败，将在5秒后重试...")
+        time.sleep(5)
     
     if hf_success and cemotion_success:
         logger.info("=== 所有模型预加载完成 ===")
