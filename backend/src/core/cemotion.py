@@ -8,6 +8,9 @@ import logging
 from typing import Union, List, Tuple
 from cemotion import Cemotion as CemotionBase
 import time
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 logger = logging.getLogger('SentiScore')
 
@@ -29,7 +32,6 @@ class APIError(Exception):
 class EmotionAnalysisError(Exception):
     """情感分析错误类"""
     pass
-
 
 class Cemotion:
     """
@@ -60,6 +62,18 @@ class Cemotion:
                 # 切换到模型缓存目录
                 os.chdir(model_cache_dir)
                 
+                # 应用镜像配置 - 确保使用HF_ENDPOINT而不是HF_MIRROR
+                if self.config and hasattr(self.config, 'HF_ENDPOINT'):
+                    os.environ['HF_ENDPOINT'] = self.config.HF_ENDPOINT
+                if self.config and hasattr(self.config, 'HF_MIRROR'):
+                    # 为了兼容性也设置HF_MIRROR
+                    os.environ['HF_MIRROR'] = self.config.HF_MIRROR
+                
+                # 配置下载超时和重试机制
+                if self.config and hasattr(self.config, 'MODEL_DOWNLOAD_TIMEOUT'):
+                    os.environ['HF_HUB_ETAG_TIMEOUT'] = str(self.config.MODEL_DOWNLOAD_TIMEOUT)
+                    os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = str(self.config.MODEL_DOWNLOAD_TIMEOUT)
+                
                 # 在指定目录初始化模型
                 self.model = CemotionBase()
                 logger.info(f"情感分析模型加载成功，使用缓存目录: {model_cache_dir}")
@@ -68,6 +82,18 @@ class Cemotion:
                 os.chdir(original_cwd)
             else:
                 # 使用默认路径
+                # 应用镜像配置 - 确保使用HF_ENDPOINT而不是HF_MIRROR
+                if self.config and hasattr(self.config, 'HF_ENDPOINT'):
+                    os.environ['HF_ENDPOINT'] = self.config.HF_ENDPOINT
+                if self.config and hasattr(self.config, 'HF_MIRROR'):
+                    # 为了兼容性也设置HF_MIRROR
+                    os.environ['HF_MIRROR'] = self.config.HF_MIRROR
+                
+                # 配置下载超时和重试机制
+                if self.config and hasattr(self.config, 'MODEL_DOWNLOAD_TIMEOUT'):
+                    os.environ['HF_HUB_ETAG_TIMEOUT'] = str(self.config.MODEL_DOWNLOAD_TIMEOUT)
+                    os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = str(self.config.MODEL_DOWNLOAD_TIMEOUT)
+                
                 self.model = CemotionBase()
                 logger.info("情感分析模型加载成功（使用默认模型）")
         except Exception as e:

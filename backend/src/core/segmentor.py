@@ -3,16 +3,7 @@ import re
 import os
 from typing import List, Union, Tuple, Optional, Any
 
-# 修复容器中的导入问题
-try:
-    # 在容器环境中，模块路径是 src.utils.helpers
-    from src.utils.helpers import APIError
-except ImportError:
-    # 在开发环境中，模块路径是 backend.src.utils.helpers
-    from backend.src.utils.helpers import APIError
-
-# 设置HanLP模型目录，确保模型下载到指定的持久化目录
-# 必须在导入hanlp之前设置HANLP_HOME环境变量
+# 在导入HanLP之前设置环境变量
 from config import config
 if hasattr(config, 'HANLP_MODEL_DIR') and config.HANLP_MODEL_DIR:
     # 设置HanLP根目录环境变量
@@ -23,6 +14,14 @@ if hasattr(config, 'HANLP_MODEL_DIR') and config.HANLP_MODEL_DIR:
 
 # 移除LTP导入，替换为HanLP
 import hanlp
+
+# 修复容器中的导入问题
+try:
+    # 在容器环境中，模块路径是 src.utils.helpers
+    from src.utils.helpers import APIError
+except ImportError:
+    # 在开发环境中，模块路径是 backend.src.utils.helpers
+    from backend.src.utils.helpers import APIError
 
 logger = logging.getLogger('SentiScore')
 
