@@ -123,7 +123,8 @@ def preload_models_if_needed():
             result = subprocess.run([sys.executable, 'preload_models.py'], 
                                   cwd=project_root,
                                   capture_output=True, 
-                                  text=True)
+                                  text=True,
+                                  env={**os.environ, 'HF_HOME': config.HF_CACHE_DIR})  # 确保HF_HOME环境变量正确传递
             if result.returncode == 0:
                 logger.info("模型预加载完成")
             else:

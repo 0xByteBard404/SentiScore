@@ -9,11 +9,12 @@ from typing import List
 # 立即设置Hugging Face环境变量，必须在任何transformers导入之前
 HF_MIRROR_DEFAULT = 'https://hf-mirror.com'
 HF_ENDPOINT_VALUE = os.getenv('HF_ENDPOINT', HF_MIRROR_DEFAULT)
-HF_CACHE_DIR_DEFAULT = os.getenv('HF_HOME', os.path.join(os.path.expanduser("~"), '.cache', 'huggingface'))
+# 修复：确保HF_HOME使用正确的模型路径
+HF_CACHE_DIR_DEFAULT = os.getenv('HF_HOME', os.path.join(models_path, 'huggingface_cache'))
 
 # 全局设置Hugging Face Hub配置
 os.environ.setdefault('HF_ENDPOINT', HF_ENDPOINT_VALUE)
-os.environ.setdefault('HF_HOME', HF_CACHE_DIR_DEFAULT)
+os.environ.setdefault('HF_HOME', HF_CACHE_DIR_DEFAULT)  # 修复：使用正确的默认路径
 os.environ.setdefault('HF_HUB_DISABLE_PROGRESS_BARS', 'true')
 os.environ.setdefault('HF_HUB_ETAG_TIMEOUT', '10')
 
