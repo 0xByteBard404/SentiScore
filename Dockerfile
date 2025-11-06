@@ -19,8 +19,10 @@ RUN apt-get update && apt-get install -y \
 # 复制依赖文件
 COPY backend/requirements.txt .
 
-# 安装Python依赖
-RUN pip install --no-cache-dir -r requirements.txt
+# 安装Python依赖并解决pynvml冲突
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip uninstall -y pynvml && \
+    pip install --no-cache-dir nvidia-ml-py==12.535.133
 
 # 复制代码文件
 COPY backend/app.py backend/config.py backend/preload_models.py ./
@@ -45,6 +47,9 @@ ENV MODELSCOPE_CACHE_HOME=/app/models/modelscope_cache
 ENV MODELSCOPE_CACHE_DIR=/app/models/modelscope_cache
 ENV HF_HOME=/app/.cache/huggingface
 ENV PYTHONPATH=/app
+
+# 清理可能存在的损坏缓存
+RUN rm -rf /root/.cache/huggingface
 
 # 设置环境变量
 ENV FLASK_ENV=production
