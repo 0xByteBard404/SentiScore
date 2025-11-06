@@ -446,21 +446,34 @@ def register_routes(app, emotion_analyzer=None, text_segmentor=None):
             text = data.get('text', '')
             
             # 验证输入
-            if not text:
-                return api_response(
-                    code=400,
-                    message="文本不能为空"
-                ), 400
-            
-            if not isinstance(text, str):
-                return api_response(
-                    code=400,
-                    message="文本必须是字符串类型"
-                ), 400
+            if text_segmentor:
+                is_valid, error_msg = text_segmentor.validate_input(text)
+                if not is_valid:
+                    return api_response(
+                        code=400,
+                        message=error_msg.message if hasattr(error_msg, 'message') else str(error_msg)
+                    ), 400
+            else:
+                if not text:
+                    return api_response(
+                        code=400,
+                        message="文本不能为空"
+                    ), 400
+                
+                if not isinstance(text, str):
+                    return api_response(
+                        code=400,
+                        message="文本必须是字符串类型"
+                    ), 400
             
             # 执行文本分词
             if text_segmentor:
-                segments = text_segmentor.segment(text)
+                try:
+                    segments = text_segmentor.segment(text)
+                except Exception as e:
+                    logger.error(f"分词器执行出错: {e}", exc_info=True)
+                    # 使用后备方案
+                    segments = list(text)
             else:
                 # 模拟分词结果（用于测试）
                 segments = list(text)
@@ -536,7 +549,7 @@ def register_routes(app, emotion_analyzer=None, text_segmentor=None):
             logger.error(f"文本分词错误: {e}", exc_info=True)
             return api_response(
                 code=500,
-                message="服务暂时异常，请稍后重试"
+                message=f"服务暂时异常，请稍后重试。错误详情: {str(e)}"
             ), 500
         finally:
             # 定期执行垃圾回收
@@ -582,18 +595,27 @@ def register_routes(app, emotion_analyzer=None, text_segmentor=None):
                 ), 400
             
             # 验证每个文本
-            for i, text in enumerate(texts):
-                if not text:
-                    return api_response(
-                        code=400,
-                        message=f"第{i+1}条文本不能为空"
-                    ), 400
-                
-                if not isinstance(text, str):
-                    return api_response(
-                        code=400,
-                        message=f"第{i+1}条文本必须是字符串类型"
-                    ), 400
+            if text_segmentor:
+                for i, text in enumerate(texts):
+                    is_valid, error_msg = text_segmentor.validate_input(text)
+                    if not is_valid:
+                        return api_response(
+                            code=400,
+                            message=f"第{i+1}条文本错误: {error_msg.message if hasattr(error_msg, 'message') else str(error_msg)}"
+                        ), 400
+            else:
+                for i, text in enumerate(texts):
+                    if not text:
+                        return api_response(
+                            code=400,
+                            message=f"第{i+1}条文本不能为空"
+                        ), 400
+                    
+                    if not isinstance(text, str):
+                        return api_response(
+                            code=400,
+                            message=f"第{i+1}条文本必须是字符串类型"
+                        ), 400
             
             # 执行批量文本分词
             results = []
@@ -686,6 +708,140 @@ def register_routes(app, emotion_analyzer=None, text_segmentor=None):
             return api_response(
                 code=500,
                 message="服务暂时异常，请稍后重试"
+            ), 500
+        finally:
+            # 定期执行垃圾回收
+            if int(time.time()) % 10 == 0:  # 每10秒执行一次
+                collected = gc.collect()
+                if collected > 0:
+                    logger.debug(f"垃圾回收完成，清理对象数: {collected}")
+    
+    @api_bp.route('/segment/long', methods=['POST'])
+    @validate_json
+    @api_key_required
+    def segment_long_text(user):
+        """
+        长文本分词接口（支持超过2048字符的文本）
+        """
+        try:
+            # 记录请求开始时间
+            start_time = time.time()
+            
+            # 获取请求数据
+            data = request.get_json()
+            text = data.get('text', '')
+            chunk_size = data.get('chunk_size', 512)  # 默认分块大小
+            
+            # 验证输入（不检查长度限制）
+            if text_segmentor:
+                is_valid, error_msg = text_segmentor.validate_input_without_length_check(text)
+                if not is_valid:
+                    return api_response(
+                        code=400,
+                        message=error_msg.message if hasattr(error_msg, 'message') else str(error_msg)
+                    ), 400
+            else:
+                if not text:
+                    return api_response(
+                        code=400,
+                        message="文本不能为空"
+                    ), 400
+                
+                if not isinstance(text, str):
+                    return api_response(
+                        code=400,
+                        message="文本必须是字符串类型"
+                    ), 400
+            
+            # 验证分块大小（限制在合理范围内）
+            if not isinstance(chunk_size, int) or chunk_size < 100 or chunk_size > 1024:
+                chunk_size = 512  # 使用默认值
+            
+            # 执行长文本分词
+            if text_segmentor:
+                try:
+                    segments = text_segmentor.segment_long_text(text, chunk_size)
+                except Exception as e:
+                    logger.error(f"长文本分词器执行出错: {e}", exc_info=True)
+                    # 使用后备方案
+                    segments = list(text)
+            else:
+                # 模拟分词结果（用于测试）
+                segments = list(text)
+            
+            # 计算响应时间
+            response_time = round((time.time() - start_time) * 1000, 2)
+            
+            # 记录API调用（如果用户已认证）
+            user_id = user.id
+            if user_id:
+                auth_service = AuthService()
+                
+                # 检查请求中是否包含API密钥
+                api_key_value = None
+                specific_api_key = None
+                if 'X-API-Key' in request.headers:
+                    api_key_value = request.headers.get('X-API-Key')
+                elif 'api_key' in request.args:
+                    api_key_value = request.args.get('api_key')
+                elif 'api_key' in request.form:
+                    api_key_value = request.form.get('api_key')
+                
+                # 如果使用了API密钥，则只检查和扣减API密钥的配额
+                if api_key_value:
+                    specific_api_key = APIKey.query.filter_by(key=api_key_value, user_id=user.id).first()
+                    if specific_api_key:
+                        # 检查API密钥配额
+                        if specific_api_key.quota_used >= specific_api_key.quota_total:
+                            return api_response(
+                                code=403,
+                                message="API密钥配额已用完，请升级套餐或购买更多配额"
+                            ), 403
+                        # 扣减API密钥配额
+                        auth_service.deduct_api_key_quota(specific_api_key, 1)
+                else:
+                    # 如果没有使用API密钥，则检查并扣减用户套餐配额
+                    quota_valid, quota_msg = auth_service.check_user_quota(user)
+                    if not quota_valid:
+                        return api_response(
+                            code=403,
+                            message=quota_msg
+                        ), 403
+                    # 扣减用户套餐配额
+                    auth_service.deduct_user_quota(user, 1)
+                
+                # 记录API调用
+                api_call = APICall()
+                api_call.user_id = user_id
+                api_call.api_key_id = specific_api_key.id if specific_api_key else None
+                api_call.endpoint = '/segment/long'
+                api_call.method = 'POST'
+                api_call.response_status = 200
+                api_call.response_time_ms = response_time
+                api_call.ip_address = request.remote_addr
+                api_call.user_agent = request.headers.get('User-Agent', '')
+                api_call.quota_deducted = True
+                api_call.batch_size = 1
+                from src.database.manager import db
+                db.session.add(api_call)
+                db.session.commit()
+            
+            # 构造响应数据
+            result = {
+                'segments': segments,
+                'segment_count': len(segments),
+                'text_length': len(text),
+                'chunk_size': chunk_size
+            }
+            
+            logger.info(f"[{request.remote_addr}] 长文本分词完成 - 文本长度: {len(text)}, 分词数量: {len(segments)}")
+            return api_response(data=result)
+            
+        except Exception as e:
+            logger.error(f"长文本分词错误: {e}", exc_info=True)
+            return api_response(
+                code=500,
+                message=f"服务暂时异常，请稍后重试。错误详情: {str(e)}"
             ), 500
         finally:
             # 定期执行垃圾回收

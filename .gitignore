@@ -5,6 +5,8 @@ __pycache__/
 
 # Test
 tests/
+test*
+models
 
 # Logs
 logs/

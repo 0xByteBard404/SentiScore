@@ -17,7 +17,7 @@
 
 ## 项目结构
 
-```
+```text
 frontend/
 ├── public/                 # 静态资源
 ├── src/
@@ -40,21 +40,25 @@ frontend/
 ## 开发指南
 
 ### 安装依赖
+
 ```bash
 npm install
 ```
 
 ### 开发环境启动
+
 ```bash
 npm run dev
 ```
 
 ### 构建生产版本
+
 ```bash
 npm run build
 ```
 
 ### 代码检查
+
 ```bash
 npm run lint
 ```

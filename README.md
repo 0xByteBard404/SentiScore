@@ -18,7 +18,7 @@
 
 ### 本地开发部署
 
-```bash
+````bash
 # 1. 克隆项目
 git clone https://github.com/0xByteBard404/SentiScore.git
 cd SentiScore
@@ -45,7 +45,7 @@ npm run dev
 
 ### Docker部署
 
-```bash
+````bash
 # 构建镜像
 docker build -t sentiscore .
 
@@ -98,13 +98,13 @@ SentiScore 使用 SQLite 作为数据库，并支持多种持久化方式：
 
 步骤 1：创建一个命名卷（Named Volume）
 
-```bash
+````bash
 docker volume create SentiScore_sqlite_data
 ```
 
 步骤 2：运行容器时挂载该卷到数据库文件所在目录
 
-```bash
+````bash
 docker run -d \
   --name myapp \
   -v SentiScore_sqlite_data:/app/instance \
@@ -135,7 +135,7 @@ docker run -d \
 
 ### 单文本情感分析
 
-```bash
+````bash
 curl -X POST http://localhost:5000/analyze \
      -H "Content-Type: application/json" \
      -d '{"text": "今天天气很好，我很开心"}'
@@ -156,7 +156,7 @@ curl -X POST http://localhost:5000/analyze \
 
 ### 批量情感分析
 
-```bash
+````bash
 curl -X POST http://localhost:5000/batch \
      -H "Content-Type: application/json" \
      -d '{"texts": ["今天天气很好", "我很开心", "但也有点累"]}'
@@ -191,47 +191,35 @@ curl -X POST http://localhost:5000/batch \
 
 ### 文本分词
 
-```bash
+````bash
 curl -X POST http://localhost:5000/segment \
      -H "Content-Type: application/json" \
      -d '{"text": "今天天气很好，我很开心"}'
 ```
 
-响应示例：
-```json
-{
-  "data": {
-    "tokens": ["今天", "天气", "很", "好", "，", "我", "很", "开心"],
-    "text_length": 11,
-    "token_count": 8
-  },
-  "timestamp": 1761639505
-}
-```
+> 注意：单条文本长度不能超过2048个字符，超过部分会被截断处理
 
-### 批量文本分词
+响应示例：
+
+### 长文本分词
 
 ```bash
-curl -X POST http://localhost:5000/segment/batch \
+curl -X POST http://localhost:5000/segment/long \
      -H "Content-Type: application/json" \
-     -d '{"texts": ["今天天气很好", "我很开心"]}'
+     -H "X-API-Key: your_api_key_here" \
+     -d '{"text": "这是一个超过2048字符的长文本..."}'
 ```
 
+> 注意：长文本分词接口理论上支持任意长度文本，但建议不超过10000字符。系统会自动分块处理超长文本。
+
 响应示例：
-```json
+```
 {
-  "data": [
-    {
-      "tokens": ["今天", "天气", "很", "好"],
-      "text_length": 6,
-      "token_count": 4
-    },
-    {
-      "tokens": ["我", "很", "开心"],
-      "text_length": 4,
-      "token_count": 3
-    }
-  ],
+  "data": {
+    "tokens": ["这是一个", "超过512字符", "的长文本..."],
+    "text_length": 2048,
+    "token_count": 3
+  },
   "timestamp": 1761639525
 }
 ```

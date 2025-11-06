@@ -30,15 +30,14 @@ COPY backend/src/ src/
 RUN adduser --disabled-password --gecos '' appuser
 
 # 创建缓存目录和数据库目录
-RUN mkdir -p /app/.cemotion_cache /app/.cache/modelscope /app/instance
+RUN mkdir -p /app/.cemotion_cache /app/models/hanlp_models /app/instance
 # 创建空的数据库文件并设置权限
 RUN touch /app/instance/sentiscore.db
 RUN chown -R appuser:appuser /app
 
 # 设置环境变量指向持久化缓存目录
 ENV MODEL_CACHE_DIR=/app/.cemotion_cache
-ENV MODELSCOPE_CACHE_DIR=/app/.cache/modelscope
-ENV MODELSCOPE_CACHE_HOME=/app/.cache/modelscope
+ENV HANLP_MODEL_DIR=/app/models/hanlp_models
 ENV PYTHONPATH=/app
 
 # 设置环境变量

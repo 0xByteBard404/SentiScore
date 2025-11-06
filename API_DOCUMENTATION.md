@@ -25,7 +25,7 @@ SentiScore 是一个基于深度学习的情感分析服务，提供对中文文
 
 所有错误响应都遵循统一的格式：
 
-```json
+````json
 {
   "code": "错误代码",
   "message": "错误描述",
@@ -47,7 +47,7 @@ SentiScore 是一个基于深度学习的情感分析服务，提供对中文文
 
 **响应示例**:
 
-``json
+```json
 {
   "status": "healthy",
   "timestamp": 1700000000,
@@ -80,7 +80,7 @@ SentiScore 是一个基于深度学习的情感分析服务，提供对中文文
 
 **请求参数**:
 
-```json
+````json
 {
   "text": "待分析的中文文本"
 }
@@ -88,7 +88,7 @@ SentiScore 是一个基于深度学习的情感分析服务，提供对中文文
 
 **请求示例**:
 
-```bash
+````bash
 curl -X POST http://localhost:5000/analyze \
   -H "Content-Type: application/json" \
   -d '{"text": "今天天气真好，我很开心"}'
@@ -130,7 +130,7 @@ curl -X POST http://localhost:5000/analyze \
 
 **请求参数**:
 
-```json
+````json
 {
   "texts": ["文本1", "文本2", "..."]
 }
@@ -138,7 +138,7 @@ curl -X POST http://localhost:5000/analyze \
 
 **请求示例**:
 
-```bash
+````bash
 curl -X POST http://localhost:5000/batch \
   -H "Content-Type: application/json" \
   -d '{"texts": ["今天天气真好", "我很不开心"]}'
@@ -179,7 +179,7 @@ curl -X POST http://localhost:5000/batch \
 
 **请求参数**:
 
-```json
+````json
 {
   "text": "待分词的中文文本"
 }
@@ -227,7 +227,7 @@ curl -X POST http://localhost:5000/segment \
 
 **请求参数**:
 
-```json
+````json
 {
   "texts": ["文本1", "文本2", "..."]
 }
@@ -269,199 +269,118 @@ curl -X POST http://localhost:5000/segment/batch \
 | text_length  | integer        | 原始文本长度     |
 | token_count  | integer        | 分词数量         |
 
-## 使用示例
+### 6. 长文本情感分析
 
-### Python 示例
+对超过512字符的长文本进行情感分析，系统会自动将文本分块处理后再合并结果。
 
-```
-import requests
-import json
+**请求方式**: `POST`
 
-# 单文本分析
-def analyze_single_text(text):
-    response = requests.post(
-        'http://localhost:5000/analyze',
-        headers={'Content-Type': 'application/json'},
-        data=json.dumps({'text': text})
-    )
-    
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"请求失败: {response.status_code}")
+**请求路径**: `/analyze/long`
 
-# 批量分析
-def analyze_batch_texts(texts):
-    response = requests.post(
-        'http://localhost:5000/batch',
-        headers={'Content-Type': 'application/json'},
-        data=json.dumps({'texts': texts})
-    )
-    
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"请求失败: {response.status_code}")
+**请求头**: 
+- `Content-Type: application/json`
 
-# 单文本分词
-def segment_single_text(text):
-    response = requests.post(
-        'http://localhost:5000/segment',
-        headers={'Content-Type': 'application/json'},
-        data=json.dumps({'text': text})
-    )
-    
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"请求失败: {response.status_code}")
+**请求参数**:
 
-# 批量分词
-def segment_batch_texts(texts):
-    response = requests.post(
-        'http://localhost:5000/segment/batch',
-        headers={'Content-Type': 'application/json'},
-        data=json.dumps({'texts': texts})
-    )
-    
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"请求失败: {response.status_code}")
-
-# 使用示例
-try:
-    # 单文本分析
-    result = analyze_single_text("今天天气很好，我很开心")
-    print(f"情感: {result['data']['emotion']}")
-    print(f"得分: {result['data']['emotion_score']}")
-    
-    # 批量分析
-    texts = ["今天天气很好", "我很开心", "但也有点累"]
-    result = analyze_batch_texts(texts)
-    for i, item in enumerate(result['data']):
-        print(f"文本: {texts[i]}")
-        print(f"  情感: {item['emotion']}")
-        print(f"  得分: {item['emotion_score']}")
-        
-    # 单文本分词
-    result = segment_single_text("今天天气很好，我很开心")
-    print(f"分词结果: {' '.join(result['data']['segments'])}")
-    
-    # 批量分词
-    result = segment_batch_texts(["今天天气很好", "我很开心"])
-    for i, item in enumerate(result['data']):
-        print(f"文本 {i+1} 分词结果: {' '.join(item['segments'])}")
-except Exception as e:
-    print(f"错误: {e}")
+````json
+{
+  "text": "待分析的长中文文本（可超过512字符）",
+  "chunk_size": 512  // 可选，分块大小，默认512
+}
 ```
 
-### JavaScript 示例
+**请求示例**:
 
+```bash
+curl -X POST http://localhost:5000/analyze/long \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{"text": "这是一个超过512字符的长文本..."}'
 ```
-// 单文本分析
-async function analyzeSingleText(text) {
-    const response = await fetch('http://localhost:5000/analyze', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({text: text})
-    });
-    
-    if (response.ok) {
-        return await response.json();
-    } else {
-        throw new Error(`请求失败: ${response.status}`);
-    }
-}
 
-// 批量分析
-async function analyzeBatchTexts(texts) {
-    const response = await fetch('http://localhost:5000/batch', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({texts: texts})
-    });
-    
-    if (response.ok) {
-        return await response.json();
-    } else {
-        throw new Error(`请求失败: ${response.status}`);
-    }
-}
+**成功响应示例**:
 
-// 单文本分词
-async function segmentSingleText(text) {
-    const response = await fetch('http://localhost:5000/segment', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({text: text})
-    });
-    
-    if (response.ok) {
-        return await response.json();
-    } else {
-        throw new Error(`请求失败: ${response.status}`);
-    }
+```json
+{
+  "data": {
+    "emotion_score": 0.9876,
+    "emotion": "正面",
+    "confidence": 0.9752,
+    "text_length": 1024,
+    "chunk_size": 512
+  },
+  "timestamp": 1700000000
 }
-
-// 批量分词
-async function segmentBatchTexts(texts) {
-    const response = await fetch('http://localhost:5000/segment/batch', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({texts: texts})
-    });
-    
-    if (response.ok) {
-        return await response.json();
-    } else {
-        throw new Error(`请求失败: ${response.status}`);
-    }
-}
-
-// 使用示例
-(async () => {
-    try {
-        // 单文本分析
-        const singleResult = await analyzeSingleText("今天天气很好，我很开心");
-        console.log("情感:", singleResult.data.emotion);
-        console.log("得分:", singleResult.data.emotion_score);
-        
-        // 批量分析
-        const texts = ["今天天气很好", "我很开心", "但也有点累"];
-        const batchResult = await analyzeBatchTexts(texts);
-        batchResult.data.forEach((item, index) => {
-            console.log(`文本: ${texts[index]}`);
-            console.log(`  情感: ${item.emotion}`);
-            console.log(`  得分: ${item.emotion_score}`);
-        });
-        
-        // 单文本分词
-        const segmentResult = await segmentSingleText("今天天气很好，我很开心");
-        console.log("分词结果:", segmentResult.data.segments.join(' '));
-        
-        // 批量分词
-        const segmentBatchResult = await segmentBatchTexts(["今天天气很好", "我很开心"]);
-        segmentBatchResult.data.forEach((item, index) => {
-            console.log(`文本 ${index+1} 分词结果:`, item.segments.join(' '));
-        });
-    } catch (error) {
-        console.error("错误:", error);
-    }
-})();
 ```
+
+**响应字段说明**:
+
+| 字段名        | 类型    | 描述                           |
+| ------------- | ------- | ------------------------------ |
+| emotion_score | float   | 情感得分，范围[0,1]            |
+| emotion       | string  | 情感极性，"正面"或"负面"       |
+| confidence    | float   | 置信度，越接近1表示越确定      |
+| text_length   | integer | 原始文本长度                   |
+| chunk_size    | integer | 分块大小                       |
+
+### 7. 长文本分词
+
+对超过2048字符的长文本进行分词处理，系统会自动将文本分块处理后再合并结果。
+
+**请求方式**: `POST`
+
+**请求路径**: `/segment/long`
+
+**请求头**: 
+- `Content-Type: application/json`
+
+**请求参数**:
+
+````json
+{
+  "text": "待分词的长中文文本（可超过2048字符）",
+  "chunk_size": 512  // 可选，分块大小，默认512
+}
+```
+
+**请求示例**:
+
+```bash
+curl -X POST http://localhost:5000/segment/long \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{"text": "这是一个超过2048字符的长文本..."}'
+```
+
+**成功响应示例**:
+
+```json
+{
+  "data": {
+    "segments": ["这是", "一个", "超过", "..."],
+    "text_length": 2500,
+    "segment_count": 320,
+    "chunk_size": 512
+  },
+  "timestamp": 1700000000
+}
+```
+
+**响应字段说明**:
+
+| 字段名       | 类型           | 描述             |
+| ------------ | -------------- | ---------------- |
+| segments     | array[string]  | 分词结果数组     |
+| text_length  | integer        | 原始文本长度     |
+| segment_count| integer        | 分词数量         |
+| chunk_size   | integer        | 分块大小         |
 
 ## 限制与注意事项
 
-1. **文本长度限制**: 建议单条文本不超过1000字符
+1. **文本长度限制**: 
+   - 普通分词接口(/segment)：单条文本长度不能超过2048个字符，超过部分会被截断
+   - 长文本分词接口(/segment/long)：单条文本长度理论上无限制，但建议不超过10000字符
+   - 模型限制：底层分词模型最大序列长度为512字符，系统会自动处理超长文本
 2. **批量处理限制**: 单次批量处理建议不超过100条文本
 3. **首次请求延迟**: 服务启动后首次加载模型需要时间，属于正常现象
 4. **缓存机制**: 服务内置LRU缓存，重复请求可获得更快响应
@@ -491,7 +410,7 @@ async function segmentBatchTexts(texts) {
 
 ### 日志查看
 
-```bash
+````bash
 # Docker方式查看日志
 docker-compose logs
 

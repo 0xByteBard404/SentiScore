@@ -2,7 +2,9 @@
 
 ## 项目概述
 
-SentiScore 是一个基于 cemotion 情感分析库封装的轻量级 Flask RESTful API 服务，专注于提供高精度的中文文本情感分析能力。该项目旨在简化对复杂 BERT 模型的调用流程，提供高性能、易部署的情感分析接口。同时，项目还提供了完整的Web管理后台，方便用户管理API密钥和查看调用统计。
+SentiScore 是一个基于 cemotion 情感分析库封装的轻量级 Flask RESTful API 服务，
+专注于提供高精度的中文文本情感分析能力。该项目旨在简化对复杂 BERT 模型的调用流程，
+提供高性能、易部署的情感分析接口。同时，项目还提供了完整的Web管理后台，方便用户管理API密钥和查看调用统计。
 
 ## 核心功能
 
@@ -36,6 +38,7 @@ SentiScore 是一个基于 cemotion 情感分析库封装的轻量级 Flask REST
 ## 技术选型
 
 ### 后端技术栈
+
 - **后端框架**：Flask >=3.0.0
 - **AI框架**：cemotion >=2.0.0 (基于 PyTorch 的中文情感分析和分词库)
 - **系统监控**：psutil >=5.9.0
@@ -44,6 +47,7 @@ SentiScore 是一个基于 cemotion 情感分析库封装的轻量级 Flask REST
 - **Python版本**：3.11
 
 ### 前端技术栈
+
 - **前端框架**：Vue 3 + TypeScript
 - **UI框架**：Element Plus
 - **状态管理**：Pinia

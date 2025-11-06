@@ -17,18 +17,12 @@ os.environ.setdefault('HF_HOME', HF_CACHE_DIR_DEFAULT)
 os.environ.setdefault('HF_HUB_DISABLE_PROGRESS_BARS', 'true')
 os.environ.setdefault('HF_HUB_ETAG_TIMEOUT', '10')
 
-# 设置ModelScope缓存目录 - 使用与Docker卷挂载一致的路径
-# 这需要在任何modelscope相关模块导入之前设置
 # 获取项目根目录
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 设置模型存储路径为项目根目录下的models文件夹
 models_path = os.getenv('MODELS_PATH', os.path.join(project_root, 'models'))
 # 规范化路径，移除 .. 
 models_path = os.path.normpath(models_path)
-MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', os.path.join(models_path, 'modelscope_cache'))
-MODELSCOPE_CACHE_DIR = os.path.normpath(MODELSCOPE_CACHE_DIR)
-os.environ.setdefault('MODELSCOPE_CACHE_HOME', MODELSCOPE_CACHE_DIR)
-os.environ['MODELSCOPE_CACHE_HOME'] = MODELSCOPE_CACHE_DIR
 
 class Config:
     """应用配置类"""
@@ -47,6 +41,10 @@ class Config:
     # 模型配置
     MODEL_CACHE_DIR = os.getenv('MODEL_CACHE_DIR', os.path.join(models_path, 'cemotion_cache'))
     MODEL_CACHE_DIR = os.path.normpath(MODEL_CACHE_DIR)
+
+    # HanLP模型目录配置
+    HANLP_MODEL_DIR = os.getenv('HANLP_MODEL_DIR', os.path.join(models_path, 'hanlp_models'))
+    HANLP_MODEL_DIR = os.path.normpath(HANLP_MODEL_DIR)
 
     # cemotion多源下载配置 (国内外镜像)
     MODEL_SOURCES = {
@@ -67,12 +65,8 @@ class Config:
     # 使用国内镜像加速Hugging Face下载
     HF_MIRROR = os.getenv('HF_MIRROR', 'https://hf-mirror.com')  # 或使用 'https://huggingface.co' (官方)
 
-    # ModelScope配置
-    MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', os.path.join(models_path, 'modelscope_cache'))
-    MODELSCOPE_CACHE_DIR = os.path.normpath(MODELSCOPE_CACHE_DIR)
-
     # API配置
-    MAX_TEXT_LENGTH = int(os.getenv('MAX_TEXT_LENGTH', '512'))
+    MAX_TEXT_LENGTH = int(os.getenv('MAX_TEXT_LENGTH', '2048'))  # 增加到2048字符以支持更长文本
     BATCH_SIZE = int(os.getenv('BATCH_SIZE', '16'))
     REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', '30'))
 
@@ -114,9 +108,9 @@ def validate_config():
     if not os.path.exists(config.MODEL_CACHE_DIR):
         os.makedirs(config.MODEL_CACHE_DIR)
     
-    # 创建ModelScope缓存目录
-    if not os.path.exists(config.MODELSCOPE_CACHE_DIR):
-        os.makedirs(config.MODELSCOPE_CACHE_DIR)
+    # 创建HanLP模型目录
+    if not os.path.exists(config.HANLP_MODEL_DIR):
+        os.makedirs(config.HANLP_MODEL_DIR)
 
 # 运行配置验证
 validate_config()

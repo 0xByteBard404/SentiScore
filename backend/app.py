@@ -192,7 +192,7 @@ try:
     text_segmentor = TextSegmentor(config=config)
     logger.info("文本分词器初始化成功")
 except Exception as e:
-    logger.error(f"文本分词器初始化失败: {e}")
+    logger.error(f"文本分词器初始化失败: {e}", exc_info=True)
     text_segmentor = None
 
 # 注册路由
