@@ -82,6 +82,26 @@ init_volume.bat   # Windows
 docker-compose -f docker-compose.full.yml up -d
 ```
 
+### 一键部署脚本
+
+为了简化部署过程，项目提供了两个一键部署脚本：
+
+- `deploy.sh` - 适用于 Linux/macOS 系统的 Bash 脚本
+- `deploy.ps1` - 适用于 Windows 系统的 PowerShell 脚本
+
+这些脚本会自动检查 Docker 环境，停止正在运行的服务，删除旧镜像，然后重新构建和启动服务。
+
+**Linux/macOS 使用方式：**
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+**Windows 使用方式：**
+```powershell
+./deploy.ps1
+```
+
 访问地址：
 - 前端管理后台: `http://localhost:80`
 - 后端API: `http://localhost:5000`
