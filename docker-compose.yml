@@ -28,6 +28,8 @@ services:
       - HF_MIRROR=https://hf-mirror.com
       - HF_HUB_ETAG_TIMEOUT=300
       - HF_HUB_DOWNLOAD_TIMEOUT=300
+      # ModelScope配置
+      - MODELSCOPE_CACHE_HOME=/app/.cache/modelscope
     restart: unless-stopped
     user: "1000:1000"  # 使用非root用户运行
 

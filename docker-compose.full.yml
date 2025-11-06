@@ -26,6 +26,9 @@ services:
       - HF_MIRROR=https://hf-mirror.com
       - HF_HUB_ETAG_TIMEOUT=300
       - HF_HUB_DOWNLOAD_TIMEOUT=300
+      # ModelScope配置
+      - MODELSCOPE_CACHE_HOME=/app/models/modelscope_cache
+      - MODELSCOPE_CACHE_DIR=/app/models/modelscope_cache
       # 数据库配置
       - DATABASE_URL=sqlite:////app/instance/sentiscore.db
     restart: unless-stopped

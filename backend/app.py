@@ -3,18 +3,18 @@
 主应用文件
 """
 # 标准库
-import time
 import os
-import warnings
+import sys
+import time
 import torch
-import gc
+import logging
+import warnings
 import threading
+import gc
 from flask import Flask, jsonify
-from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 
-# 在导入任何其他模块之前设置环境变量
-# 设置ModelScope环境变量（提前设置，确保在cemotion导入前生效）
 # 获取项目根目录
 project_root = os.path.dirname(os.path.abspath(__file__))
 models_path = os.path.join(project_root, '..', 'models')
@@ -66,12 +66,64 @@ os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'  # 禁用进度条，避免影�
 if not os.path.exists(config.HF_CACHE_DIR):
     os.makedirs(config.HF_CACHE_DIR, exist_ok=True)
 
+# 创建ModelScope缓存目录
+if not os.path.exists(MODELSCOPE_CACHE_DIR):
+    os.makedirs(MODELSCOPE_CACHE_DIR, exist_ok=True)
+
 # 验证配置完整性
 logger.info("配置验证完成")
 logger.info(f"ModelScope缓存目录: {MODELSCOPE_CACHE_DIR}")
 logger.info(f"HanLP模型目录: {config.HANLP_MODEL_DIR}")
 logger.info(f"cemotion模型缓存目录: {config.MODEL_CACHE_DIR}")
 logger.info(f"Hugging Face缓存目录: {config.HF_CACHE_DIR}")
+
+# 检查并预加载模型
+def preload_models_if_needed():
+    """检查并预加载模型（如果需要）"""
+    try:
+        # 检查Hugging Face模型是否存在
+        hf_tokenizer_path = os.path.join(config.HF_CACHE_DIR, 'hub', 'models--bert-base-chinese')
+        cemotion_model_path = os.path.join(config.MODEL_CACHE_DIR, '.cemotion_cache', 'cemotion_2.0.pt')
+        
+        need_preload = False
+        
+        # 检查BERT tokenizer是否存在
+        if not os.path.exists(hf_tokenizer_path):
+            logger.info("BERT tokenizer未找到，需要预加载")
+            need_preload = True
+        else:
+            logger.info("BERT tokenizer已存在")
+        
+        # 检查cemotion模型是否存在
+        if not os.path.exists(cemotion_model_path):
+            logger.info("cemotion模型未找到，需要预加载")
+            need_preload = True
+        else:
+            logger.info("cemotion模型已存在")
+        
+        if need_preload:
+            logger.info("开始预加载模型...")
+            # 导入预加载脚本并执行
+            import subprocess
+            result = subprocess.run([sys.executable, 'preload_models.py'], 
+                                  cwd=project_root,
+                                  capture_output=True, 
+                                  text=True)
+            if result.returncode == 0:
+                logger.info("模型预加载完成")
+            else:
+                logger.error(f"模型预加载失败: {result.stderr}")
+                return False
+        else:
+            logger.info("所有模型已存在，跳过预加载")
+        
+        return True
+    except Exception as e:
+        logger.error(f"模型检查和预加载过程中出错: {e}")
+        return False
+
+# 预加载模型
+preload_models_if_needed()
 
 app = Flask(__name__)
 # 配置JSON编码器，确保中文字符不会被转义
