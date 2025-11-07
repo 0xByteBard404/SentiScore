@@ -33,7 +33,7 @@ services:
       - TRANSFORMERS_OFFLINE=0
       - HF_HOME=/app/.cache/huggingface
     restart: unless-stopped
-    user: "1000:1000"  # 使用非root用户运行
+    # 移除user配置，让Docker自动处理权限
 
 # 定义命名卷
 volumes:

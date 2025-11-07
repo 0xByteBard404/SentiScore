@@ -54,8 +54,7 @@ def preload_huggingface_models():
         logger.info("正在下载/加载 bert-base-chinese tokenizer...")
         tokenizer = BertTokenizer.from_pretrained(
             'bert-base-chinese',
-            cache_dir=config.HF_CACHE_DIR,  # 明确指定缓存目录
-            timeout=600  # 增加超时时间
+            cache_dir=config.HF_CACHE_DIR  # 明确指定缓存目录
         )
         logger.info("bert-base-chinese tokenizer 加载完成")
         
@@ -63,8 +62,7 @@ def preload_huggingface_models():
         model = BertForSequenceClassification.from_pretrained(
             'bert-base-chinese', 
             num_labels=1,
-            cache_dir=config.HF_CACHE_DIR,  # 明确指定缓存目录
-            timeout=600  # 增加超时时间
+            cache_dir=config.HF_CACHE_DIR  # 明确指定缓存目录
         )
         logger.info("bert-base-chinese 模型加载完成")
         

@@ -28,16 +28,12 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 COPY backend/app.py backend/config.py backend/preload_models.py ./
 COPY backend/src/ src/
 
-# 创建非root用户
-RUN adduser --disabled-password --gecos '' appuser
-
 # 创建缓存目录和数据库目录
 RUN mkdir -p /app/.cache/huggingface /app/.cemotion_cache /app/models/hanlp_models /app/models/modelscope_cache /app/instance
-# 创建空的数据库文件并设置权限
+# 创建空的数据库文件
 RUN touch /app/instance/sentiscore.db
-# 设置所有目录的权限，确保appuser可以读写
-RUN chown -R appuser:appuser /app
-RUN chmod -R 777 /app
+# 设置目录权限，确保容器可以读写
+RUN chmod -R 755 /app
 
 # 设置环境变量指向持久化缓存目录
 ENV MODEL_CACHE_DIR=/app/.cemotion_cache
