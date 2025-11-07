@@ -7,11 +7,9 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      # 持久化模型缓存，避免重复下载
-      - ./models/cemotion_cache:/app/.cemotion_cache
-      - ./models/hanlp_models:/app/models/hanlp_models
-      - ./models/huggingface_cache:/app/.cache/huggingface
-      # 持久化数据库文件 - 使用 Docker Volume
+      # 使用统一的Docker命名卷持久化所有模型缓存，避免重复下载
+      - SentiScore_models:/app/models
+      # 持久化数据库文件
       - SentiScore_sqlite_data:/app/instance
     environment:
       - FLASK_ENV=production
@@ -36,7 +34,7 @@ services:
       - TRANSFORMERS_OFFLINE=0
       - HF_HOME=/app/.cache/huggingface
     restart: unless-stopped
-    user: "appuser:appuser"  # 使用非root用户运行
+    # 移除user配置，让Docker自动处理权限
 
   # 前端服务
   frontend:
@@ -52,3 +50,4 @@ services:
 # 定义命名卷
 volumes:
   SentiScore_sqlite_data:
+  SentiScore_models:
