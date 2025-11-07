@@ -64,7 +64,7 @@ class Config:
     MODEL_DOWNLOAD_RETRIES = int(os.getenv('MODEL_DOWNLOAD_RETRIES', '5'))  # 下载重试次数
 
     # Hugging Face配置
-    HF_CACHE_DIR = os.getenv('HF_HOME', os.path.join(models_path, 'huggingface_cache'))
+    HF_CACHE_DIR = os.getenv('HF_HOME', '/app/.cache/huggingface')
     HF_CACHE_DIR = os.path.normpath(HF_CACHE_DIR)
     # 使用国内镜像加速Hugging Face下载
     HF_ENDPOINT = os.getenv('HF_ENDPOINT', 'https://hf-mirror.com')  # 默认使用国内镜像
