@@ -8,11 +8,9 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      # 持久化模型缓存，避免重复下载
-      - ./models/cemotion_cache:/app/.cemotion_cache
-      - ./models/modelscope_cache:/app/.cache/modelscope
-      - ./models/hanlp_models:/app/models/hanlp_models
-      # 持久化数据库文件 - 使用 Docker Volume
+      # 使用统一的Docker命名卷持久化所有模型缓存，避免重复下载
+      - SentiScore_models:/app/models
+      # 持久化数据库文件
       - SentiScore_sqlite_data:/app/instance
     environment:
       - FLASK_ENV=production
@@ -40,3 +38,4 @@ services:
 # 定义命名卷
 volumes:
   SentiScore_sqlite_data:
+  SentiScore_models:
