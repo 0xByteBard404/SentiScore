@@ -83,27 +83,27 @@ done
 
 log_success "模型目录准备完成"
 
-# 停止正在运行的服务
-log_info "正在检查是否有正在运行的服务..."
+# 停止当前项目的服务（严格限制在当前项目范围内）
+log_info "正在检查当前项目是否有正在运行的服务..."
 RUNNING_SERVICES=$(docker-compose -f docker-compose.full.yml ps --services --filter "status=running" 2>/dev/null || true)
 
 if [ -n "$RUNNING_SERVICES" ]; then
-    log_info "检测到正在运行的服务: $RUNNING_SERVICES"
-    log_info "正在停止服务..."
+    log_info "检测到当前项目正在运行的服务: $RUNNING_SERVICES"
+    log_info "正在停止当前项目服务..."
     if docker-compose -f docker-compose.full.yml down; then
-        log_success "服务已停止"
+        log_success "当前项目服务已停止"
     else
-        log_warning "停止服务时出现问题，尝试强制停止"
+        log_warning "停止当前项目服务时出现问题，尝试强制停止"
         docker-compose -f docker-compose.full.yml down --remove-orphans --timeout 30
     fi
 else
-    log_info "没有正在运行的服务"
+    log_info "当前项目没有正在运行的服务"
 fi
 
-# 清理当前项目产生的镜像
+# 清理当前项目产生的镜像（严格限制在当前项目范围内）
 log_info "正在清理当前项目的镜像..."
 
-# 只清理当前项目构建的镜像，避免影响其他镜像
+# 只清理当前项目构建的镜像，严格避免影响其他镜像
 PROJECT_IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -E "^sentiscore-(backend|frontend):latest$" || true)
 
 if [ -n "$PROJECT_IMAGES" ]; then
@@ -112,7 +112,12 @@ if [ -n "$PROJECT_IMAGES" ]; then
     log_info "正在删除当前项目镜像..."
     echo "$PROJECT_IMAGES" | while read -r image; do
         if [ -n "$image" ]; then
-            docker rmi "$image" 2>/dev/null && log_info "删除镜像: $image" || log_warning "无法删除镜像: $image (可能正在被使用)"
+            # 双重确认：只删除精确匹配的当前项目镜像
+            if echo "$image" | grep -qE "^sentiscore-(backend|frontend):latest$"; then
+                docker rmi "$image" 2>/dev/null && log_info "删除当前项目镜像: $image" || log_warning "无法删除当前项目镜像: $image (可能正在被使用)"
+            else
+                log_warning "跳过非当前项目镜像: $image"
+            fi
         fi
     done
     log_success "当前项目镜像清理完成"
@@ -120,18 +125,20 @@ else
     log_info "没有找到当前项目的镜像"
 fi
 
-# 清理当前项目产生的悬空镜像（只清理当前项目相关的）
+# 清理当前项目产生的悬空镜像（严格限制在当前项目范围内）
 log_info "正在清理当前项目的悬空镜像..."
 DANGLING_IMAGES=$(docker images -f "dangling=true" -q 2>/dev/null || true)
 if [ -n "$DANGLING_IMAGES" ]; then
-    # 只清理与当前项目相关的悬空镜像
+    # 只清理与当前项目相关的悬空镜像，严格限制范围
     CURRENT_PROJECT_DANGLING=$(echo "$DANGLING_IMAGES" | while read -r image_id; do
-        if docker image inspect "$image_id" 2>/dev/null | grep -q "sentiscore"; then
+        # 使用更严格的检查：检查镜像标签是否包含 sentiscore
+        if docker image inspect "$image_id" 2>/dev/null | grep -q "\"sentiscore\""; then
             echo "$image_id"
         fi
     done || true)
     
     if [ -n "$CURRENT_PROJECT_DANGLING" ]; then
+        log_info "检测到当前项目的悬空镜像，正在清理..."
         echo "$CURRENT_PROJECT_DANGLING" | xargs -r docker rmi 2>/dev/null || log_warning "无法清理所有当前项目的悬空镜像"
         log_success "当前项目悬空镜像清理完成"
     else
