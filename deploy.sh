@@ -100,33 +100,43 @@ else
     log_info "没有正在运行的服务"
 fi
 
-# 清理旧的镜像和容器
-log_info "正在清理系统资源..."
+# 清理当前项目产生的镜像
+log_info "正在清理当前项目的镜像..."
 
-# 删除旧的镜像（如果存在）
-log_info "正在检查是否存在旧的镜像..."
-OLD_IMAGES=$(docker images --filter "reference=sentiscore-*" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -E "(sentiscore-backend|sentiscore-frontend)" || true)
+# 只清理当前项目构建的镜像，避免影响其他镜像
+PROJECT_IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -E "^sentiscore-(backend|frontend):latest$" || true)
 
-if [ -n "$OLD_IMAGES" ]; then
-    log_info "检测到旧的镜像:"
-    echo "$OLD_IMAGES"
-    log_info "正在删除..."
-    echo "$OLD_IMAGES" | while read -r image; do
+if [ -n "$PROJECT_IMAGES" ]; then
+    log_info "检测到当前项目的镜像:"
+    echo "$PROJECT_IMAGES"
+    log_info "正在删除当前项目镜像..."
+    echo "$PROJECT_IMAGES" | while read -r image; do
         if [ -n "$image" ]; then
-            docker rmi "$image" 2>/dev/null && log_info "删除镜像: $image" || log_warning "无法删除镜像: $image"
+            docker rmi "$image" 2>/dev/null && log_info "删除镜像: $image" || log_warning "无法删除镜像: $image (可能正在被使用)"
         fi
     done
-    log_success "旧镜像清理完成"
+    log_success "当前项目镜像清理完成"
 else
-    log_info "没有找到旧的镜像"
+    log_info "没有找到当前项目的镜像"
 fi
 
-# 清理悬空镜像
-log_info "正在清理悬空镜像..."
+# 清理当前项目产生的悬空镜像（只清理当前项目相关的）
+log_info "正在清理当前项目的悬空镜像..."
 DANGLING_IMAGES=$(docker images -f "dangling=true" -q 2>/dev/null || true)
 if [ -n "$DANGLING_IMAGES" ]; then
-    echo "$DANGLING_IMAGES" | xargs -r docker rmi 2>/dev/null || log_warning "无法清理所有悬空镜像"
-    log_success "悬空镜像清理完成"
+    # 只清理与当前项目相关的悬空镜像
+    CURRENT_PROJECT_DANGLING=$(echo "$DANGLING_IMAGES" | while read -r image_id; do
+        if docker image inspect "$image_id" 2>/dev/null | grep -q "sentiscore"; then
+            echo "$image_id"
+        fi
+    done || true)
+    
+    if [ -n "$CURRENT_PROJECT_DANGLING" ]; then
+        echo "$CURRENT_PROJECT_DANGLING" | xargs -r docker rmi 2>/dev/null || log_warning "无法清理所有当前项目的悬空镜像"
+        log_success "当前项目悬空镜像清理完成"
+    else
+        log_info "没有当前项目的悬空镜像需要清理"
+    fi
 else
     log_info "没有悬空镜像需要清理"
 fi
