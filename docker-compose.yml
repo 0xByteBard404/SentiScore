@@ -10,6 +10,8 @@ services:
     volumes:
       # 使用统一的Docker命名卷持久化所有模型缓存，避免重复下载
       - SentiScore_models:/app/models
+      - SentiScore_models:/app/.cache/huggingface
+      - SentiScore_models:/app/.cemotion_cache
       # 持久化数据库文件
       - SentiScore_sqlite_data:/app/instance
     environment:

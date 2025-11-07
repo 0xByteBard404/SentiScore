@@ -30,19 +30,19 @@ os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
 os.environ['HF_HUB_ETAG_TIMEOUT'] = '300'
 os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = '300'
 
-# 设置ModelScope缓存目录
-MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', os.path.join(models_path, 'modelscope_cache'))
+# 设置ModelScope缓存目录 - 使用统一的模型卷路径
+MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', '/app/models/modelscope_cache')
 # 规范化ModelScope缓存目录路径
 MODELSCOPE_CACHE_DIR = os.path.normpath(MODELSCOPE_CACHE_DIR)
 os.environ['MODELSCOPE_CACHE_HOME'] = MODELSCOPE_CACHE_DIR
 os.environ['MODELSCOPE_CACHE_DIR'] = MODELSCOPE_CACHE_DIR
 
-# 设置HanLP环境变量（提前设置，确保在hanlp导入前生效）
-HANLP_MODEL_DIR = os.getenv('HANLP_MODEL_DIR', os.path.join(models_path, 'hanlp_models'))
+# 设置HanLP环境变量（提前设置，确保在hanlp导入前生效）- 使用统一的模型卷路径
+HANLP_MODEL_DIR = os.getenv('HANLP_MODEL_DIR', '/app/models/hanlp_models')
 os.environ['HANLP_HOME'] = HANLP_MODEL_DIR
 
-# 设置Hugging Face缓存目录
-HF_CACHE_DIR = os.getenv('HF_HOME', os.path.join(models_path, 'huggingface_cache'))
+# 设置Hugging Face缓存目录 - 使用统一的模型卷路径
+HF_CACHE_DIR = os.getenv('HF_HOME', '/app/.cache/huggingface')
 HF_CACHE_DIR = os.path.normpath(HF_CACHE_DIR)
 os.environ['HF_HOME'] = HF_CACHE_DIR
 
