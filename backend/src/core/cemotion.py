@@ -11,6 +11,8 @@ import time
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import hanlp
+from hanlp.utils.rules import split_sentence
 
 logger = logging.getLogger('SentiScore')
 
@@ -269,6 +271,120 @@ class Cemotion:
             processing_time = time.time() - start_time
             logger.error(f"情感分析失败 - 文本长度: {len(text)} 字符，耗时: {processing_time:.4f}秒, 错误: {str(e)}")
             raise
+
+    def analyze_long_text_emotion(self, text: str, max_chunk_size: int = 512) -> EmotionResult:
+        """
+        分析长文本的情感分数（使用智能分段聚合）
+        
+        Args:
+            text: 待分析的长文本
+            max_chunk_size: 最大分块大小，默认512字符
+            
+        Returns:
+            EmotionResult: 情感分析结果
+        """
+        start_time = time.time()
+        try:
+            # 输入验证
+            if not isinstance(text, str):
+                raise EmotionAnalysisError("输入的text必须是字符串类型")
+            
+            if not text.strip():
+                raise EmotionAnalysisError("输入的文本不能为空")
+            
+            # 记录文本长度信息
+            text_length = len(text)
+            logger.info(f"开始分析文本，长度: {text_length} 字符")
+            
+            # 初始化最终分数
+            final_score = 0.5
+            
+            # 如果文本长度在模型限制内，直接使用单文本分析
+            if text_length <= max_chunk_size:
+                logger.info(f"文本长度{text_length}在限制内，直接分析")
+                final_score = self.predict_single(text)
+                logger.debug(f"短文本直接分析完成，分数: {final_score:.4f}")
+            else:
+                logger.info(f"文本长度{text_length}超过限制，进行分段处理")
+                # 1. 按语义分句
+                try:
+                    sentences = split_sentence(text)
+                    # 过滤掉空字符串并去除首尾空格
+                    sentences = [s.strip() for s in sentences if s.strip()]
+                    logger.info(f"HanLP分句完成，共{len(sentences)}句")
+                except Exception as e:
+                    logger.error(f"HanLP分句失败: {e}")
+                    # 如果分句失败，使用简单分句方法
+                    import re
+                    sentences = re.split(r'[。！？；;!?]', text)
+                    sentences = [s.strip() for s in sentences if s.strip()]
+                    logger.info(f"正则表达式分句完成，共{len(sentences)}句")
+                
+                # 2. 处理过长的句子
+                processed_sentences = []
+                for sentence in sentences:
+                    if len(sentence) <= max_chunk_size:
+                        processed_sentences.append(sentence)
+                    else:
+                        # 如果句子过长，按最大长度分割
+                        for i in range(0, len(sentence), max_chunk_size):
+                            processed_sentences.append(sentence[i:i+max_chunk_size])
+                
+                logger.info(f"分句处理完成，共{len(processed_sentences)}个处理单元")
+                
+                # 3. 对每句进行情感分析
+                sentence_scores = []
+                for i, sentence in enumerate(processed_sentences):
+                    try:
+                        score = self.predict_single(sentence)
+                        sentence_scores.append((sentence, score))
+                        logger.debug(f"句子{i+1}分析完成，长度:{len(sentence)}, 分数:{score:.4f}")
+                    except Exception as e:
+                        logger.error(f"句子{i+1}情感分析失败: {sentence[:50]}... 错误: {e}")
+                        # 如果分析失败，使用中性分数0.5
+                        sentence_scores.append((sentence, 0.5))
+                
+                # 4. 加权聚合（首尾段加权、关键句优先）
+                if sentence_scores:
+                    # 简单的加权平均：首尾句子权重更高
+                    total_weight = 0
+                    weighted_sum = 0
+                    
+                    for i, (sentence, score) in enumerate(sentence_scores):
+                        # 计算权重：首尾句子权重为2，中间句子权重为1
+                        weight = 2 if (i == 0 or i == len(sentence_scores) - 1) else 1
+                        total_weight += weight
+                        weighted_sum += score * weight
+                        logger.debug(f"句子{i+1}权重:{weight}, 分数:{score:.4f}")
+                    
+                    # 计算加权平均分数
+                    final_score = weighted_sum / total_weight if total_weight > 0 else 0.5
+                    final_score = max(0.0, min(1.0, final_score))
+                    logger.info(f"加权聚合完成，总权重:{total_weight}, 最终分数:{final_score:.4f}")
+            
+            # 计算置信度（距离0.5的程度）
+            confidence = abs(final_score - 0.5) * 2
+            emotion = "正面" if final_score >= 0.5 else "负面"
+
+            result = EmotionResult(
+                emotion_score=final_score,
+                emotion=emotion,
+                confidence=round(confidence, 4),
+                text_length=text_length
+            )
+
+            processing_time = time.time() - start_time
+            logger.info(f"长文本情感分析成功 - 文本长度: {text_length} 字符，耗时: {processing_time:.4f}秒")
+
+            return result
+
+        except EmotionAnalysisError:
+            # 重新抛出情感分析错误
+            raise
+        except Exception as e:
+            processing_time = time.time() - start_time
+            logger.error(f"长文本情感分析失败 - 文本长度: {len(text)} 字符，耗时: {processing_time:.4f}秒, 错误: {str(e)}")
+            raise EmotionAnalysisError(f"长文本情感分析失败: {str(e)}") from e
 
     # 保持向后兼容性
     def predict(self, text):
