@@ -32,6 +32,10 @@ if (-not (Test-Path "docker-compose.full.yml")) {
     exit 1
 }
 
+# 确保模型目录存在并设置正确的权限
+New-Item -ItemType Directory -Path "models/hanlp_models" -Force | Out-Null
+# 在Windows上，权限设置与Linux不同，这里简化处理
+
 # 停止正在运行的服务
 Write-Host "正在检查是否有正在运行的服务..." -ForegroundColor Yellow
 try {
