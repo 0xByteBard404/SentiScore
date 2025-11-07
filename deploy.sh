@@ -85,8 +85,11 @@ log_success "模型目录准备完成"
 
 # 停止正在运行的服务
 log_info "正在检查是否有正在运行的服务..."
-if docker-compose -f docker-compose.full.yml ps --services --filter "status=running" 2>/dev/null | grep -q .; then
-    log_info "检测到正在运行的服务，正在停止..."
+RUNNING_SERVICES=$(docker-compose -f docker-compose.full.yml ps --services --filter "status=running" 2>/dev/null || true)
+
+if [ -n "$RUNNING_SERVICES" ]; then
+    log_info "检测到正在运行的服务: $RUNNING_SERVICES"
+    log_info "正在停止服务..."
     if docker-compose -f docker-compose.full.yml down; then
         log_success "服务已停止"
     else
@@ -102,13 +105,15 @@ log_info "正在清理系统资源..."
 
 # 删除旧的镜像（如果存在）
 log_info "正在检查是否存在旧的镜像..."
-OLD_IMAGES=$(docker images --filter "reference=sentiscore-*" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || true)
+OLD_IMAGES=$(docker images --filter "reference=sentiscore-*" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -E "(sentiscore-backend|sentiscore-frontend)" || true)
 
 if [ -n "$OLD_IMAGES" ]; then
-    log_info "检测到旧的镜像，正在删除..."
+    log_info "检测到旧的镜像:"
+    echo "$OLD_IMAGES"
+    log_info "正在删除..."
     echo "$OLD_IMAGES" | while read -r image; do
         if [ -n "$image" ]; then
-            docker rmi "$image" 2>/dev/null || log_warning "无法删除镜像: $image"
+            docker rmi "$image" 2>/dev/null && log_info "删除镜像: $image" || log_warning "无法删除镜像: $image"
         fi
     done
     log_success "旧镜像清理完成"
@@ -137,10 +142,12 @@ if docker-compose -f docker-compose.full.yml up --build -d; then
     
     # 检查服务状态
     log_info "检查服务状态..."
-    if docker-compose -f docker-compose.full.yml ps --services --filter "status=running" 2>/dev/null | grep -q .; then
-        log_success "所有服务运行正常"
+    RUNNING_AFTER_START=$(docker-compose -f docker-compose.full.yml ps --services --filter "status=running" 2>/dev/null || true)
+
+    if [ -n "$RUNNING_AFTER_START" ]; then
+        log_success "运行中的服务: $RUNNING_AFTER_START"
     else
-        log_warning "部分服务可能未正常启动，请检查日志"
+        log_warning "没有服务在运行，请检查日志"
     fi
     
     echo ""
