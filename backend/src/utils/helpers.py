@@ -57,7 +57,8 @@ def setup_logging():
 
     # 防止重复添加handler
     if logger.handlers:
-        return logger
+        # 如果已有处理器，先清空再重新配置
+        logger.handlers.clear()
 
     # 控制台处理器
     console_handler = logging.StreamHandler()
@@ -73,7 +74,7 @@ def setup_logging():
         maxBytes=10*1024*1024,  # 10MB
         backupCount=5
     )
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(logging.DEBUG if log_level == 'DEBUG' else logging.INFO)
     file_formatter = logging.Formatter(log_format)
     file_handler.setFormatter(file_formatter)
 
