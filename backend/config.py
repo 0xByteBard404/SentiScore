@@ -6,17 +6,18 @@ cemotion API 配置文件
 import os
 from typing import List
 
-# 立即设置Hugging Face环境变量，必须在任何transformers导入之前
+# 设置Hugging Face环境变量，但使用setdefault避免覆盖已设置的变量
+# 注意：app.py中已经强制设置了这些变量，这里使用setdefault确保兼容性
 HF_MIRROR_DEFAULT = 'https://hf-mirror.com'
 HF_ENDPOINT_VALUE = os.getenv('HF_ENDPOINT', HF_MIRROR_DEFAULT)
 HF_CACHE_DIR_DEFAULT = os.getenv('HF_HOME', os.path.join(os.path.expanduser("~"), '.cache', 'huggingface'))
 
-# 全局设置Hugging Face Hub配置
+# 使用setdefault确保不会覆盖app.py中已经设置的强制值
 os.environ.setdefault('HF_ENDPOINT', HF_ENDPOINT_VALUE)
 os.environ.setdefault('HF_HOME', HF_CACHE_DIR_DEFAULT)
 os.environ.setdefault('HF_HUB_DISABLE_PROGRESS_BARS', 'true')
-os.environ.setdefault('HF_HUB_ETAG_TIMEOUT', '10')
-# 暂时禁用离线模式，允许从镜像站点下载模型
+os.environ.setdefault('HF_HUB_ETAG_TIMEOUT', '300')  # 增加到300秒
+os.environ.setdefault('HF_HUB_DOWNLOAD_TIMEOUT', '300')  # 增加到300秒
 os.environ.setdefault('HF_HUB_OFFLINE', '0')
 os.environ.setdefault('TRANSFORMERS_OFFLINE', '0')
 

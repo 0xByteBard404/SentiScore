@@ -9,7 +9,7 @@ import sys
 import logging
 import time  # 新增time模块用于重试等待
 
-# 在导入config之前设置环境变量
+# 在导入config之前强制设置环境变量
 # 获取项目根目录
 project_root = os.path.dirname(os.path.abspath(__file__))
 # 设置模型存储路径为项目根目录下的models文件夹
@@ -17,19 +17,22 @@ models_path = os.getenv('MODELS_PATH', os.path.join(os.path.dirname(project_root
 # 规范化路径，移除 .. 
 models_path = os.path.normpath(models_path)
 
-# 提前设置HF_HOME环境变量，确保在任何transformers相关库导入之前设置
-HF_CACHE_DIR_DEFAULT = os.getenv('HF_HOME', os.path.join(models_path, 'huggingface_cache'))
-os.environ.setdefault('HF_HOME', HF_CACHE_DIR_DEFAULT)
+# 强制设置Hugging Face镜像站点 - 确保使用国内镜像
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+os.environ['HF_HUB_OFFLINE'] = '0'
+os.environ['TRANSFORMERS_OFFLINE'] = '0'
+os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = 'true'
+os.environ['HF_HUB_ETAG_TIMEOUT'] = '300'
+os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = '300'
 
-# 设置HF_ENDPOINT环境变量
-HF_ENDPOINT_VALUE = os.getenv('HF_ENDPOINT', 'https://hf-mirror.com')
-os.environ.setdefault('HF_ENDPOINT', HF_ENDPOINT_VALUE)
+# 设置HF_HOME环境变量
+HF_CACHE_DIR_DEFAULT = os.getenv('HF_HOME', os.path.join(models_path, 'huggingface_cache'))
+os.environ['HF_HOME'] = HF_CACHE_DIR_DEFAULT
 
 from config import config
 
 # 再次确保环境变量设置正确
 os.environ['HF_HOME'] = config.HF_CACHE_DIR
-os.environ['HF_ENDPOINT'] = config.HF_ENDPOINT
 
 # 设置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -40,10 +43,6 @@ def preload_huggingface_models():
     logger.info("开始预加载Hugging Face模型...")
     
     try:
-        # 设置Hugging Face环境变量
-        os.environ['HF_HOME'] = config.HF_CACHE_DIR
-        os.environ['HF_ENDPOINT'] = config.HF_ENDPOINT
-        
         # 确保缓存目录存在
         if not os.path.exists(config.HF_CACHE_DIR):
             os.makedirs(config.HF_CACHE_DIR, exist_ok=True)

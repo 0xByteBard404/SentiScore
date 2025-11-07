@@ -21,7 +21,15 @@ models_path = os.path.join(project_root, '..', 'models')
 # 规范化路径，移除 .. 部分
 models_path = os.path.normpath(models_path)
 
-# 提前设置所有环境变量，确保在任何相关库导入之前生效
+# 彻底设置所有环境变量，确保在任何相关库导入之前生效
+# 强制设置Hugging Face镜像站点 - 这是最关键的部分！
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+os.environ['HF_HUB_OFFLINE'] = '0'
+os.environ['TRANSFORMERS_OFFLINE'] = '0'
+os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
+os.environ['HF_HUB_ETAG_TIMEOUT'] = '300'
+os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = '300'
+
 # 设置ModelScope缓存目录
 MODELSCOPE_CACHE_DIR = os.getenv('MODELSCOPE_CACHE_DIR', os.path.join(models_path, 'modelscope_cache'))
 # 规范化ModelScope缓存目录路径
@@ -33,14 +41,10 @@ os.environ['MODELSCOPE_CACHE_DIR'] = MODELSCOPE_CACHE_DIR
 HANLP_MODEL_DIR = os.getenv('HANLP_MODEL_DIR', os.path.join(models_path, 'hanlp_models'))
 os.environ['HANLP_HOME'] = HANLP_MODEL_DIR
 
-# 设置Hugging Face环境变量（提前设置，确保在transformers导入前生效）
+# 设置Hugging Face缓存目录
 HF_CACHE_DIR = os.getenv('HF_HOME', os.path.join(models_path, 'huggingface_cache'))
 HF_CACHE_DIR = os.path.normpath(HF_CACHE_DIR)
 os.environ['HF_HOME'] = HF_CACHE_DIR
-os.environ['HF_ENDPOINT'] = os.getenv('HF_ENDPOINT', 'https://hf-mirror.com')
-os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
-os.environ['HF_HUB_OFFLINE'] = '0'  # 启用在线模式
-os.environ['TRANSFORMERS_OFFLINE'] = '0'  # 启用transformers在线模式
 
 # 本地配置导入
 from config import config
